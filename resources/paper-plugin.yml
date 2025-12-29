@@ -4,7 +4,7 @@ description: Immensia plugin
 api-version: '1.21.11'
 
 main: ru.immensia.Main
-bootstrapper: ru.immensia.boot.Strap
+bootstrapper: ru.immensia.boot.IStrap
 loader: ru.immensia.boots.Loader
 
 dependencies:

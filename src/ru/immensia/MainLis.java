@@ -1,14 +1,18 @@
 package ru.immensia;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
+import com.destroystokyo.paper.ParticleBuilder;
 import com.destroystokyo.paper.entity.villager.Reputation;
 import com.destroystokyo.paper.entity.villager.ReputationType;
+import com.destroystokyo.paper.event.player.PlayerElytraBoostEvent;
 import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.Equippable;
+import io.papermc.paper.datacomponent.item.Fireworks;
 import io.papermc.paper.datacomponent.item.ItemEnchantments;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -41,7 +45,10 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.BannerMeta;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 import ru.immensia.entities.mobs.DragonBoss;
 import ru.immensia.utils.BlockUtil;
 import ru.immensia.utils.ItemUtil;
@@ -49,6 +56,7 @@ import ru.immensia.utils.EntityUtil;
 import ru.immensia.utils.colors.TCUtil;
 import ru.immensia.utils.locs.BVec;
 import ru.immensia.utils.locs.LocUtil;
+import ru.immensia.utils.versions.Nms;
 
 public class MainLis implements Listener {
 
@@ -533,5 +541,94 @@ public class MainLis implements Listener {
 	@EventHandler
 	public void onDragon(final EnderDragonChangePhaseEvent e) {
 		DragonBoss.onStage(e);
+	}
+
+
+	public static final double VEL_MUL = 0.025d;
+	public static final double POP_MUL = 0.4d;
+	public static final double ANGLE = 20d;
+	@EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+	public void onBoost(final PlayerElytraBoostEvent e) {
+		final Firework fw = e.getFirework();
+		final FireworkMeta fm = fw.getFireworkMeta();
+		final int length = fw.getTicksToDetonate();
+		final int es = fm.getEffectsSize();
+		fw.remove();
+		final Player p = e.getPlayer();
+		if (!usingFirework(p, es)) return;
+		p.playSound(net.kyori.adventure.sound.Sound.sound(Key.key("entity.firework_rocket.launch"),
+			net.kyori.adventure.sound.Sound.Source.AMBIENT, 10f, Main.srnd.nextFloat() * 0.2f + 0.8f),
+			net.kyori.adventure.sound.Sound.Emitter.self());
+		final WeakReference<Player> prf = new WeakReference<>(p);
+		new BukkitRunnable() {
+			final Vector dif = new Vector(Main.srnd.nextFloat() - 0.5f,
+				Main.srnd.nextFloat() - 0.5f, Main.srnd.nextFloat() - 0.5f).multiply(0.8d);
+			int tick = 0;
+			public void run() {
+				final Player pl = prf.get();
+				if (pl == null || !pl.isValid()) {
+					cancel();
+					return;
+				}
+
+				final Location loc = pl.getEyeLocation().add(dif);
+				final Vector dir = loc.getDirection();
+				loc.add(dir).add(dir);
+
+				if (!pl.isGliding() || Nms.fastType(pl.getWorld(), BVec.of(loc)).hasCollision()) {
+					if (es != 0) {
+						pl.launchProjectile(Firework.class,
+							new Vector(), f -> f.setFireworkMeta(fm)).detonate();
+					}
+					cancel();
+					return;
+				}
+
+				if (tick++ == length) {
+					final int es = fm.getEffectsSize();
+					if (es != 0) {
+						pl.setNoDamageTicks(4);
+						pl.launchProjectile(Firework.class, new Vector(),
+							f -> f.setFireworkMeta(fm)).detonate();
+						pl.setVelocity(pl.getVelocity().add(dir.rotateAroundNonUnitAxis(
+								new Vector(-dir.getZ(), 0d, dir.getX()).normalize(), ANGLE)
+							.multiply((es + 1) * POP_MUL)));
+					}
+					cancel();
+					return;
+				}
+				new ParticleBuilder(Particle.FIREWORK).location(loc)
+					.receivers(100).count(1).extra(0d).spawn();
+				pl.setVelocity(pl.getVelocity().add(dir.multiply(VEL_MUL)));
+			}
+		}.runTaskTimer(Main.plug, 0, 0);
+	}
+
+	private boolean usingFirework(final Player p, final int size) {
+		final PlayerInventory inv = p.getInventory();
+		final ItemStack hnd = inv.getItemInMainHand();
+		final Fireworks fdh = hnd.getData(DataComponentTypes.FIREWORKS);
+		if (fdh != null && fdh.effects().size() == size) {
+			if (p.getGameMode() != GameMode.CREATIVE)
+				inv.setItemInMainHand(hnd.subtract());
+			return true;
+		}
+		final ItemStack ofh = inv.getItemInOffHand();
+		final Fireworks fdo = hnd.getData(DataComponentTypes.FIREWORKS);
+		if (fdo != null && fdo.effects().size() == size) {
+			if (p.getGameMode() != GameMode.CREATIVE)
+				inv.setItemInOffHand(ofh.subtract());
+			return true;
+		}
+		return false;
+	}
+
+	private static final double THRESH = 0.1d;
+	@EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+	public void onGlide(final EntityToggleGlideEvent e) {
+		final Entity ent = e.getEntity();
+		final Vector vec = ent.getVelocity();
+		if (vec.getX() * vec.getX() + vec.getZ() * vec.getZ() < THRESH) return;
+		ent.setVelocity(vec.multiply(THRESH));
 	}
 }
