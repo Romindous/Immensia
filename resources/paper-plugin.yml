@@ -1,0 +1,25 @@
+name: Immensia
+version: '3.2'
+description: Immensia plugin
+api-version: '1.21.11'
+
+main: ru.immensia.Main
+bootstrapper: ru.immensia.boot.Strap
+loader: ru.immensia.boots.Loader
+
+dependencies:
+  #bootstrap:
+  # Let's say that RegistryPlugin registers some data that your plugin needs to use
+  # We don't need this during runtime, so it's not required in the server section.
+  # However, can be added to both if needed
+
+  # load (BEFORE|AFTER|OMIT): Whether the plugin should load before or after your plugin.
+  # required: Whether this plugin is required for your plugin to load.
+  # join-classpath: Whether your plugin should have access to their classpath.
+  # This is used for plugins that need to access other plugins internals directly.
+
+  server:
+    Ostrov: # Add a required "RequiredPlugin" dependency, which will load AFTER your plugin.
+      load: BEFORE
+      required: false
+      join-classpath: true
