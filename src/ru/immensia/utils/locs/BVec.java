@@ -12,7 +12,7 @@ import org.bukkit.entity.Entity;
 import ru.immensia.Main;
 import ru.immensia.utils.EntityUtil;
 import ru.immensia.utils.NumUtil;
-import ru.immensia.utils.StringUtil;
+import ru.immensia.utils.strings.StringUtil;
 
 public class BVec implements BlockPosition, Cloneable {
 

@@ -27,7 +27,7 @@ import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.objects.OConfig;
 import ru.immensia.utils.EntityUtil;
-import ru.immensia.utils.colors.TCUtil;
+import ru.immensia.utils.strings.TCUtil;
 import ru.immensia.utils.locs.BVec;
 
 public abstract class SpecialItem implements Keyed {

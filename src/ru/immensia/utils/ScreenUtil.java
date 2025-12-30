@@ -3,7 +3,7 @@ package ru.immensia.utils;
 import java.time.Duration;
 import net.kyori.adventure.title.Title;
 import org.bukkit.entity.Player;
-import ru.immensia.utils.colors.TCUtil;
+import ru.immensia.utils.strings.TCUtil;
 
 public class ScreenUtil {
 

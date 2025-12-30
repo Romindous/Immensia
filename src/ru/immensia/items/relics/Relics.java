@@ -4,7 +4,7 @@ import org.bukkit.inventory.ItemType;
 import org.bukkit.inventory.meta.trim.TrimMaterial;
 import org.bukkit.inventory.meta.trim.TrimPattern;
 import ru.immensia.items.ItemBuilder;
-import ru.immensia.utils.colors.TCUtil;
+import ru.immensia.utils.strings.TCUtil;
 
 public class Relics {
 

@@ -37,7 +37,7 @@ import ru.immensia.Main;
 
 public class IStrap implements PluginBootstrap {
 
-    public static final String space = "ostrov";
+    public static final String space = "immensia";
 
     public static NamespacedKey key(final String key) {
         final int ix = key.indexOf(':');

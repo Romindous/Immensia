@@ -1,4 +1,4 @@
-package ru.immensia.utils.colors;
+package ru.immensia.utils.strings;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;

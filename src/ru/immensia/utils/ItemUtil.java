@@ -1,28 +1,44 @@
 package ru.immensia.utils;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.destroystokyo.paper.profile.ProfileProperty;
+import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.*;
+import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 import io.papermc.paper.persistence.PersistentDataContainerView;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.tag.TagKey;
+import net.kyori.adventure.key.InvalidKeyException;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.util.TriState;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
-import org.bukkit.block.Sign;
-import org.bukkit.block.sign.Side;
-import org.bukkit.block.sign.SignSide;
-import org.bukkit.entity.HumanEntity;
+import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.*;
-import org.bukkit.inventory.meta.*;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.trim.ArmorTrim;
+import org.bukkit.inventory.meta.trim.TrimMaterial;
+import org.bukkit.inventory.meta.trim.TrimPattern;
 import org.bukkit.persistence.PersistentDataType;
-import ru.immensia.utils.colors.TCUtil;
+import org.bukkit.potion.PotionEffect;
+import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
+import ru.immensia.Main;
+import ru.immensia.boot.IStrap;
+import ru.immensia.items.DataParser;
+import ru.immensia.items.PDC;
+import ru.immensia.objects.Duo;
+import ru.immensia.utils.strings.StringUtil;
+import ru.immensia.utils.strings.TCUtil;
+import ru.immensia.utils.versions.Nms;
 
 import static org.bukkit.attribute.Attribute.*;
 
@@ -46,7 +62,7 @@ public class ItemUtil {
 
     public static int findItem(final Player p, final ItemStack item) {
         for (int i = 0; i < p.getInventory().getContents().length; i++) {
-            if (compareItem(p.getInventory().getContents()[i], item, true)) {
+            if (compare(p.getInventory().getContents()[i], item, Stat.TYPE, Stat.NAME, Stat.MODEL)) {
                 return i;
             }
         }
@@ -75,294 +91,6 @@ public class ItemUtil {
         im.displayName(TCUtil.form(name));
         is.setItemMeta(im);
         return is;
-    }
-
-
-    public enum Texture {
-        nextPage("c2f910c47da042e4aa28af6cc81cf48ac6caf37dab35f88db993accb9dfe516"),
-        previosPage("f2599bd986659b8ce2c4988525c94e19ddd39fad08a38284a197f1b70675acc"),
-        add("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "NWZmMzE0MzFkNjQ1ODdmZjZlZjk4YzA2NzU4MTA2ODFmOGMxM2JmOTZmNTFkOWNiMDdlZDc4NTJiMmZmZDEifX19"),
-        //https://minecraft-heads.com/custom-heads/alphabet?start=4720
-        //черный стиль - https://minecraft-heads.com/custom-heads/alphabet?start=3600
-        _0_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "M2YwOTAxOGY0NmYzNDllNTUzNDQ2OTQ2YTM4NjQ5ZmNmY2Y5ZmRmZDYyOTE2YWVjMzNlYmNhOTZiYjIxYjUifX19"),
-        _1_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "Y2E1MTZmYmFlMTYwNThmMjUxYWVmOWE2OGQzMDc4NTQ5ZjQ4ZjZkNWI2ODNmMTljZjVhMTc0NTIxN2Q3MmNjIn19fQ=="),
-        _2_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "NDY5OGFkZDM5Y2Y5ZTRlYTkyZDQyZmFkZWZkZWMzYmU4YTdkYWZhMTFmYjM1OWRlNzUyZTlmNTRhZWNlZGM5YSJ9fX0="),
-        _3_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "ZmQ5ZTRjZDVlMWI5ZjNjOGQ2Y2E1YTFiZjQ1ZDg2ZWRkMWQ1MWU1MzVkYmY4NTVmZTlkMmY1ZDRjZmZjZDIifX19"),
-        _4_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "ZjJhM2Q1Mzg5ODE0MWM1OGQ1YWNiY2ZjODc0NjlhODdkNDhjNWMxZmM4MmZiNGU3MmY3MDE1YTM2NDgwNTgifX19"),
-        _5_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "ZDFmZTM2YzQxMDQyNDdjODdlYmZkMzU4YWU2Y2E3ODA5YjYxYWZmZDYyNDVmYTk4NDA2OTI3NWQxY2JhNzYzIn19fQ=="),
-        _6_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "M2FiNGRhMjM1OGI3YjBlODk4MGQwM2JkYjY0Mzk5ZWZiNDQxODc2M2FhZjg5YWZiMDQzNDUzNTYzN2YwYTEifX19"),
-        _7_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "Mjk3NzEyYmEzMjQ5NmM5ZTgyYjIwY2M3ZDE2ZTE2OGIwMzViNmY4OWYzZGYwMTQzMjRlNGQ3YzM2NWRiM2ZiIn19fQ=="),
-        _8_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "YWJjMGZkYTlmYTFkOTg0N2EzYjE0NjQ1NGFkNjczN2FkMWJlNDhiZGFhOTQzMjQ0MjZlY2EwOTE4NTEyZCJ9fX0="),
-        _9_("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "ZDZhYmM2MWRjYWVmYmQ1MmQ5Njg5YzA2OTdjMjRjN2VjNGJjMWFmYjU2YjhiMzc1NWU2MTU0YjI0YTVkOGJhIn19fQ=="),
-        dot("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "MzIzZTYxOWRjYjc1MTFjZGMyNTJhNWRjYTg1NjViMTlkOTUyYWM5ZjgyZDQ2N2U2NmM1MjI0MmY5Y2Q4OGZhIn19fQ=="),
-        dotdot("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "MmZmY2MzMThjMjEyZGM3NDliNTk5NzU1ZTc2OTdkNDkyMzgyOTkzYzA3ZGUzZjhlNTRmZThmYzdkZGQxZSJ9fX0="),
-        up("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "NGIyMjFjYjk2MDdjOGE5YmYwMmZlZjVkNzYxNGUzZWIxNjljYzIxOWJmNDI1MGZkNTcxNWQ1ZDJkNjA0NWY3In19fQ=="),
-        down("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUv" +
-            "ZDhhYWI2ZDlhMGJkYjA3YzEzNWM5Nzg2MmU0ZWRmMzYzMTk0Mzg1MWVmYzU0NTQ2M2Q2OGU3OTNhYjQ1YTNkMyJ9fX0="),
-        none(""),
-        ;
-
-        public final String value;
-
-        Texture(final String texture) {
-            this.value = texture;
-        }
-    }
-
-    /**
-     * @param current текущее lore. null - создать новое
-     * @param text    текст. (br в > скобках)- перенос строки. <br>пробел или |
-     *                -возможный перенос
-     * @param color   null или осносной цвет текста
-     * @return
-     */
-    public static List<Component> lore(@Nullable List<Component> current, final String text, @Nullable String color) {
-        if (current == null) current = new ArrayList<>();
-        if (text == null) return current;
-        final Matcher regexMatcher = regex.matcher(text);
-        while (regexMatcher.find()) {
-            current.add(TCUtil.form(color == null ? regexMatcher.group() : color + regexMatcher.group()));
-        }
-    /*final String[] блоки = text.replace('&', '§');
-    //else блоки = {text};
-    for (final String блок : блоки) {
-      final List<String> нарезка = split(блок, 25);
-      for (String строчка : нарезка) {
-        current.add(clr + строчка);
-      }
-    }*/
-//Ostrov.log("genLore current="+current);
-        return current;
-    }
-
-    public static List<String> genLore(@Nullable List<String> current, final String text, @Nullable final String color) {
-        if (current == null) current = new ArrayList<>();
-        final String clr = color == null ? "§7" : color;
-
-        final String[] blocks = text.replace('&', '§').split("<br>");
-        //else блоки = {text};
-        for (final String блок : blocks) {
-            final List<String> split = split(блок, 25);
-            for (String строчка : split) {
-                current.add(clr + строчка);
-            }
-        }
-//Ostrov.log("genLore current="+current);
-        return current;
-    }
-
-    //не менять! именно List<Component> !
-    public static List<Component> genLore(@Nullable List<Component> current, @Nullable final String text) {
-        if (current == null) current = new ArrayList<>();
-        if (text == null) return current;
-
-        final String[] blocks = text.replace('&', '§').split("<br>");
-        for (final String block : blocks) {
-            if (block.length() <= 25) {
-                current.add(TCUtil.form(block));
-            } else {
-                final List<String> split = split(block, 25);
-                for (String line : split) {
-                    current.add(TCUtil.form(line));
-                }
-            }
-        }
-        return current;
-    }
-
-
-    @Deprecated
-    public static List<String> split(String block, int lineLenght) {
-        List<String> split = new ArrayList<>();
-        if (block.length() <= lineLenght) {
-            split.add(block);
-            return split;
-        }
-
-        boolean nextLine = false;
-        //int index = 0;
-        int currentLineLenght = lineLenght;
-
-        StringBuilder sb = new StringBuilder();
-        char[] blockArray = block.toCharArray();
-
-        for (int position = 0; position < blockArray.length; position++) {
-//System.out.println("111 index="+index+"  position="+position+" char="+блок_array[position] );
-
-            if (blockArray[position] == '§') {
-//System.out.println("skip § 111 position="+position );
-                sb.append(blockArray[position]);
-                //position++;
-                currentLineLenght++;
-                position++;
-                sb.append(blockArray[position]);
-                currentLineLenght++;
-                //System.out.println("skip § 222 position="+position );
-            } else {
-//System.out.println("222 index="+index+"  position="+position );
-                if (position != 0 && position % currentLineLenght == 0) {
-//System.out.println("nextLine 111 position="+position+"  current_line_lenght="+current_line_lenght );
-                    nextLine = true;
-                }
-                if (nextLine && (blockArray[position] == ' ' || blockArray[position] == '|' || blockArray[position] == ',' || blockArray[position] == '.')) {
-                    nextLine = false;
-                    split.add(sb.toString());
-                    //index++;
-                    sb = new StringBuilder();
-                    currentLineLenght = lineLenght;
-//System.out.println("nextLine 222 index="+index+" position="+position+"  current_line_lenght="+current_line_lenght );
-                } else {
-                    sb.append(blockArray[position]);
-                }
-            }
-        }
-        split.add(sb.toString()); //добавляем, что осталось
-
-        return split;
-    }
-
-    public static boolean getItems(Player player, int count, Material mat) {
-        final Map<Integer, ? extends ItemStack> ammo = player.getInventory().all(mat);
-
-        int found = 0;
-        for (ItemStack stack : ammo.values()) {
-            found += stack.getAmount();
-        }
-        if (count > found) {
-            return false;
-        }
-
-        for (final Entry<Integer, ? extends ItemStack> en : ammo.entrySet()) {
-            ItemStack stack = en.getValue();
-            int removed = Math.min(count, stack.getAmount());
-            count -= removed;
-            if (stack.getAmount() == removed) {
-                player.getInventory().setItem(en.getKey(), null);
-            } else {
-                stack.setAmount(stack.getAmount() - removed);
-            }
-            if (count <= 0) {
-                break;
-            }
-        }
-
-        player.updateInventory();
-        return true;
-    }
-
-    public static void substractItemInHand(final Player p, final EquipmentSlot hand) {
-        if (hand == EquipmentSlot.HAND) {
-            if (p.getInventory().getItemInMainHand().getAmount() == 1) {
-                p.getInventory().setItemInMainHand(air);
-            } else {
-                p.getInventory().getItemInMainHand().setAmount(p.getInventory().getItemInMainHand().getAmount() - 1);
-            }
-        } else if (hand == EquipmentSlot.OFF_HAND) {
-            if (p.getInventory().getItemInOffHand().getAmount() == 1) {
-                p.getInventory().setItemInOffHand(air);
-            } else {
-                p.getInventory().getItemInOffHand().setAmount(p.getInventory().getItemInOffHand().getAmount() - 1);
-            }
-        }
-    }
-
-    public static boolean substractOneItem(final HumanEntity he, final Material mat) {
-        //if (!he.getInventory().contains(mat)) {бессмысленно, там тоже делается обход циклом
-        //    return false;
-        //}
-        ItemStack is;
-        for (int i = 0; i < he.getInventory().getContents().length; i++) {
-            is = he.getInventory().getContents()[i];
-            if (is != null && is.getType() == mat) {
-                if (is.getAmount() >= 2) {
-                    is.setAmount(is.getAmount() - 1);//he.getInventory().getContents()[i].setAmount(he.getInventory().getContents()[i].getAmount() - 1);
-                } else {
-                    is = air;//he.getInventory().getContents()[i].setAmount(0);
-                }
-                he.getInventory().setItem(i, is);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static boolean substractAllItems(final HumanEntity he, final Material mat) {
-        if (!he.getInventory().contains(mat)) {
-            return false;
-        }
-        boolean result = false;
-        for (int i = 0; i < he.getInventory().getContents().length; i++) {
-            if (he.getInventory().getContents()[i] != null && he.getInventory().getContents()[i].getType() == mat) {
-                he.getInventory().getContents()[i].setAmount(0);
-                result = true;
-            }
-        }
-        return result;
-    }
-
-    public static boolean substractItem(final Player he, final Material mat, int ammount) {
-        if (getItemCount(he, mat) < ammount) {
-            return false;
-        }
-        final ItemStack[] cloneInv = new ItemStack[he.getInventory().getContents().length];// = playerInvClone.getContents();
-        ItemStack toClone;
-        for (int slot = 0; slot < he.getInventory().getContents().length; slot++) {
-            toClone = he.getInventory().getContents()[slot];
-            cloneInv[slot] = toClone == null ? null : toClone.clone();
-        }
-        for (int slot = 0; slot < cloneInv.length; slot++) {
-            if (cloneInv[slot] != null && mat == cloneInv[slot].getType()) {
-                if (cloneInv[slot].getAmount() == ammount) { //найдено и убрано - дальше не ищем
-                    cloneInv[slot] = air.clone();
-                    ammount = 0;
-                    //itemFindResult.remove(mat);
-                    break;
-                }
-
-                if (cloneInv[slot].getAmount() > ammount) { //найдено больше чем надо - дальше не ищем
-                    cloneInv[slot].setAmount(cloneInv[slot].getAmount() - ammount);
-                    ammount = 0;
-                    //itemFindResult.remove(mat);
-                    break;
-                }
-
-                if (cloneInv[slot].getAmount() < ammount) { //найдено меньше чем надо - убавили требуемое и ищем дальше
-                    ammount -= cloneInv[slot].getAmount();
-                    //itemFindResult.put(mat, ammount);
-                    cloneInv[slot] = air.clone();
-                }
-            }
-        }
-        if (ammount == 0) {//if (itemFindResult.isEmpty()) {
-            he.getInventory().setContents(cloneInv);
-            he.updateInventory();
-            return true;
-        }
-        return false;
-    }
-
-    public static int getItemCount(final HumanEntity he, final Material mat) {
-        int result = 0;
-        for (final ItemStack slot : he.getInventory().getContents()) {
-            if (slot != null && slot.getType() == mat) {
-                result += slot.getAmount();
-            }
-        }
-        return result;
     }
 
     public static int repairAll(final Player p) {
@@ -475,28 +203,667 @@ public class ItemUtil {
             }
         };
     }
-
-    @Deprecated
-    public static boolean compareItem(@Nullable final ItemStack is1, @Nullable final ItemStack is2, final boolean checkLore) {
-        return checkLore ? compare(is1, is2, Stat.TYPE, Stat.NAME, Stat.LORE) : compare(is1, is2, Stat.TYPE, Stat.NAME);
-    }
-
-    public static void fillSign(final Sign sign, String suggest) {
-        if (suggest == null || suggest.isEmpty()) {
-            return;
-        }
-        final SignSide sd = sign.getSide(Side.FRONT);
-        for (int ln = 0; !suggest.isEmpty() && ln < 4; ln++) {
-            if (suggest.length() > 15) {
-                sd.line(ln, TCUtil.form(suggest.substring(0, 15)));
-                suggest = suggest.substring(15);
-                continue;
+    private static final StringUtil.Split[] seps = StringUtil.Split.values();
+    private static final DataParser parsers = createParser();
+    private static DataParser createParser() {
+        final DataParser dataParser = new DataParser();
+        dataParser.put(DataParser.PDC_TYPE, new DataParser.Parser<>() {
+            public String write(final PDC.Data val) {
+                final StringBuilder sb = new StringBuilder();
+                boolean first = true;
+                for (final Duo<NamespacedKey, Serializable> en : val) {
+                    if (first) first = false;
+                    else sb.append(seps[1].get());
+                    sb.append(en.key().asMinimalString())
+                        .append(seps[2].get()).append(en.val());
+                }
+                return sb.toString();
             }
 
-            sd.line(ln, TCUtil.form(suggest));
-            break;
+            public PDC.Data parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final PDC.Data bld = new PDC.Data();
+                for (final String p : parts) {
+                    final String[] mod = seps[2].split(p);
+                    if (!ClassUtil.check(mod, 2, false)) continue;
+                    bld.add(NamespacedKey.fromString(mod[0]), mod[1]);
+                }
+                return bld;
+            }
+        });
+        dataParser.put(DataComponentTypes.ATTACK_RANGE, new DataParser.Parser<>() {
+            public String write(final AttackRange val) {
+                return String.join(seps[1].get(), StringUtil.toSigFigs(val.minReach(), (byte) 2), StringUtil.toSigFigs(val.maxReach(), (byte) 2),
+                    StringUtil.toSigFigs(val.minCreativeReach(), (byte) 2), StringUtil.toSigFigs(val.maxCreativeReach(), (byte) 2),
+                    StringUtil.toSigFigs(val.hitboxMargin(), (byte) 2), StringUtil.toSigFigs(val.mobFactor(), (byte) 2));
+            }
+
+            public AttackRange parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final AttackRange.Builder bld = AttackRange.attackRange();
+                if (!ClassUtil.check(parts, 6, false)) return bld.build();
+                return bld.minReach(NumUtil.floatOf(parts[0], 0f)).maxReach(NumUtil.floatOf(parts[1], 3f))
+                    .minCreativeReach(NumUtil.floatOf(parts[2], 0f)).maxCreativeReach(NumUtil.floatOf(parts[3], 5f))
+                    .hitboxMargin(NumUtil.floatOf(parts[4], 0.3f)).mobFactor(NumUtil.floatOf(parts[5], 1.0f)).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.DEATH_PROTECTION, new DataParser.Parser<>() {
+            public String write(final DeathProtection val) {
+                return StringUtil.NA;
+            }
+
+            public DeathProtection parse(final String str) {
+                return DeathProtection.deathProtection().build();
+            }
+        });
+        dataParser.put(DataComponentTypes.KINETIC_WEAPON, new DataParser.Parser<>() {
+            public String write(final KineticWeapon val) {
+                final Key snd = val.sound(), hsd = val.hitSound();
+                return String.join(seps[1].get(), String.valueOf(val.delayTicks()), String.valueOf(val.contactCooldownTicks()),
+                    StringUtil.toSigFigs(val.forwardMovement(), (byte) 2), StringUtil.toSigFigs(val.damageMultiplier(), (byte) 2),
+                    snd == null ? StringUtil.NA : ofKey(snd), hsd == null ? StringUtil.NA : ofKey(hsd), fromCond(val.damageConditions()),
+                    fromCond(val.dismountConditions()), fromCond(val.knockbackConditions()));
+            }
+
+            private String fromCond(final KineticWeapon.Condition cnd) {
+                return cnd == null ? StringUtil.NA : String.join(seps[2].get(), String.valueOf(cnd.maxDurationTicks()),
+                    StringUtil.toSigFigs(cnd.minSpeed(), (byte) 2), StringUtil.toSigFigs(cnd.minRelativeSpeed(), (byte) 2));
+            }
+
+            public KineticWeapon parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final KineticWeapon.Builder bld = KineticWeapon.kineticWeapon();
+                if (!ClassUtil.check(parts, 9, false)) return bld.build();
+                return bld.delayTicks(NumUtil.intOf(parts[0], 0)).contactCooldownTicks(NumUtil.intOf(parts[1], 0))
+                    .forwardMovement(NumUtil.floatOf(parts[2], 0f)).damageMultiplier(NumUtil.floatOf(parts[3], 1f))
+                    .sound(StringUtil.isNA(parts[4]) ? null : Key.key(parts[4])).sound(StringUtil.isNA(parts[5]) ? null : Key.key(parts[5]))
+                    .damageConditions(parceCond(parts[6])).dismountConditions(parceCond(parts[7])).knockbackConditions(parceCond(parts[8])).build();
+            }
+
+            private KineticWeapon.Condition parceCond(final String cnd) {
+                if (StringUtil.isNA(cnd)) return null;
+                final String[] mods = seps[2].split(cnd);
+                return KineticWeapon.condition(NumUtil.intOf(mods[0], 0),
+                    NumUtil.floatOf(mods[1], 0f), NumUtil.floatOf(mods[2], 0f));
+            }
+        });
+        dataParser.put(DataComponentTypes.SWING_ANIMATION, new DataParser.Parser<>() {
+            public String write(final SwingAnimation val) {
+                return val.type().name() + seps[1].get() + val.duration();
+            }
+
+            public SwingAnimation parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final SwingAnimation.Builder bld = SwingAnimation.swingAnimation();
+                if (!ClassUtil.check(parts, 2, false)) return bld.build();
+                return bld.type(SwingAnimation.Animation.valueOf(parts[0]))
+                    .duration(NumUtil.intOf(parts[1], 0)).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.MINIMUM_ATTACK_CHARGE, new DataParser.Parser<>() {
+            public String write(final Float val) {
+                return val.toString();
+            }
+
+            public Float parse(final String str) {
+                return NumUtil.floatOf(str, 0f);
+            }
+        });
+        dataParser.put(DataComponentTypes.TOOLTIP_STYLE, new DataParser.Parser<>() {
+            public String write(final Key val) {
+                return val.asMinimalString();
+            }
+
+            public Key parse(final String str) {
+                return Key.key(str);
+            }
+        });
+        dataParser.put(DataComponentTypes.ITEM_MODEL, new DataParser.Parser<>() {
+            public String write(final Key val) {
+                return val.asMinimalString();
+            }
+
+            public Key parse(final String str) {
+                return Key.key(str);
+            }
+        });
+        dataParser.put(DataComponentTypes.ATTRIBUTE_MODIFIERS, new DataParser.Parser<>() {
+            public String write(final ItemAttributeModifiers val) {
+                final StringBuilder sb = new StringBuilder();
+                for (final ItemAttributeModifiers.Entry ie : val.modifiers()) {
+                    final AttributeModifier mod = ie.modifier();
+                    sb.append(seps[1].get()).append(String.join(seps[2].get(), ofRegKey(Main.registries.ATTRIBS, ie.attribute()), ofKey(mod),
+                        StringUtil.toSigFigs(mod.getAmount(), (byte) 4), mod.getOperation().name(), mod.getSlotGroup().toString()));
+                }
+                return sb.isEmpty() ? "" : sb.substring(seps[1].get().length());
+            }
+
+            public ItemAttributeModifiers parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final ItemAttributeModifiers.Builder bld = ItemAttributeModifiers.itemAttributes();
+                if (!ClassUtil.check(parts, 1, true)) return bld.build();
+                for (int i = 0; i != parts.length; i++) {
+                    final String[] mod = seps[2].split(parts[i]);
+                    if (!ClassUtil.check(mod, 5, false)) continue;
+                    bld.addModifier(IStrap.get(Key.key(mod[0]), LUCK),
+                        new AttributeModifier(NamespacedKey.fromString(mod[1]), NumUtil.doubleOf(mod[2], 0d),
+                            AttributeModifier.Operation.valueOf(mod[3]), EquipmentSlotGroup.getByName(mod[4])));
+                }
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.DAMAGE, new DataParser.Parser<>() {
+            public String write(final Integer val) {
+                return val.toString();
+            }
+
+            public Integer parse(final String str) {
+                return NumUtil.intOf(str, 0);
+            }
+        });
+        dataParser.put(DataComponentTypes.ITEM_NAME, new DataParser.Parser<>() {
+            public String write(final Component val) {
+                return TCUtil.deform(val);
+            }
+
+            public Component parse(final String str) {
+                return TCUtil.form(str);
+            }
+        });
+        dataParser.put(DataComponentTypes.CUSTOM_NAME, new DataParser.Parser<>() {
+            public String write(final Component val) {
+                return TCUtil.deform(val);
+            }
+
+            public Component parse(final String str) {
+                return TCUtil.form(str);
+            }
+        });
+        dataParser.put(DataComponentTypes.LORE, new DataParser.Parser<>() {
+            public String write(final ItemLore val) {
+                return String.join(seps[1].get(), val.lines().stream().map(TCUtil::deform).toArray(i -> new String[i]));
+            }
+
+            public ItemLore parse(final String str) {
+                return ItemLore.lore(Arrays.stream(seps[1].split(str)).map(TCUtil::form).toList());
+            }
+        });
+        dataParser.put(DataComponentTypes.DYED_COLOR, new DataParser.Parser<>() {
+            public String write(final DyedItemColor val) {
+                return String.valueOf(val.color().asARGB());
+            }
+
+            public DyedItemColor parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final DyedItemColor.Builder bld = DyedItemColor.dyedItemColor();
+                if (!ClassUtil.check(parts, 1, true)) return bld.build();
+                return bld.color(Color.fromARGB(NumUtil.intOf(parts[parts.length - 1], 0))).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.CONSUMABLE, new DataParser.Parser<>() {
+            public String write(final Consumable val) {
+                return String.join(seps[1].get(), val.animation().name(),
+                    StringUtil.toSigFigs(val.consumeSeconds(), (byte) 2),
+                    String.valueOf(val.hasConsumeParticles()));
+            }
+
+            public Consumable parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final Consumable.Builder bld = Consumable.consumable();
+                if (!ClassUtil.check(parts, 3, false)) return bld.build();
+                return bld.animation(ItemUseAnimation.valueOf(parts[0]))
+                    .consumeSeconds(NumUtil.floatOf(parts[1], 0f))
+                    .hasConsumeParticles(Boolean.parseBoolean(parts[2])).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.DAMAGE_RESISTANT, new DataParser.Parser<>() {
+            public String write(final DamageResistant val) {
+                return ofKey(val.types());
+            }
+
+            public DamageResistant parse(final String str) {
+                return DamageResistant.damageResistant(TagKey.create(RegistryKey.DAMAGE_TYPE, Key.key(str)));
+            }
+        });
+        dataParser.put(DataComponentTypes.ENCHANTABLE, new DataParser.Parser<>() {
+            public String write(final Enchantable val) {
+                return String.valueOf(val.value());
+            }
+
+            public Enchantable parse(final String str) {
+                return Enchantable.enchantable(NumUtil.intOf(str, 0));
+            }
+        });
+        dataParser.put(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, new DataParser.Parser<>() {
+            public String write(final Boolean val) {
+                return val.toString();
+            }
+
+            public Boolean parse(final String str) {
+                return Boolean.parseBoolean(str);
+            }
+        });
+        dataParser.put(DataComponentTypes.ENCHANTMENTS, new DataParser.Parser<>() {
+            public String write(final ItemEnchantments val) {
+                final StringBuilder sb = new StringBuilder();
+                for (final Map.Entry<Enchantment, Integer> ie : val.enchantments().entrySet()) {
+                    sb.append(seps[1].get()).append(ofKey(ie.getKey()))
+                        .append(seps[2].get()).append(ie.getValue().intValue());
+                }
+                return sb.isEmpty() ? "" : sb.substring(seps[1].get().length());
+            }
+
+            public ItemEnchantments parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final ItemEnchantments.Builder bld = ItemEnchantments.itemEnchantments();
+                if (!ClassUtil.check(parts, 1, true)) return bld.build();
+                for (int i = 0; i != parts.length; i++) {
+                    final String[] mod = seps[2].split(parts[i]);
+                    if (!ClassUtil.check(mod, 2, false)) continue;
+                    bld.add(IStrap.get(Key.key(mod[0]), Enchantment.AQUA_AFFINITY), NumUtil.intOf(mod[1], 0));
+                }
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.STORED_ENCHANTMENTS, new DataParser.Parser<>() {
+            public String write(final ItemEnchantments val) {
+                final StringBuilder sb = new StringBuilder();
+                for (final Map.Entry<Enchantment, Integer> ie : val.enchantments().entrySet()) {
+                    sb.append(seps[1].get()).append(ofKey(ie.getKey()))
+                        .append(seps[2].get()).append(ie.getValue().intValue());
+                }
+                return sb.isEmpty() ? "" : sb.substring(seps[1].get().length());
+            }
+
+            public ItemEnchantments parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final ItemEnchantments.Builder bld = ItemEnchantments.itemEnchantments();
+                if (!ClassUtil.check(parts, 1, true)) return bld.build();
+                for (int i = 0; i != parts.length; i++) {
+                    final String[] mod = seps[2].split(parts[i]);
+                    if (!ClassUtil.check(mod, 2, false)) continue;
+                    bld.add(IStrap.get(Key.key(mod[0]), Enchantment.AQUA_AFFINITY), NumUtil.intOf(mod[1], 0));
+                }
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.EQUIPPABLE, new DataParser.Parser<>() {
+            public String write(final Equippable val) {
+                final Key model = val.assetId();
+                return String.join(seps[1].get(), val.slot().name(), model == null ? StringUtil.NA : model.asMinimalString(), String.valueOf(val.damageOnHurt()),
+                    String.valueOf(val.dispensable()), String.valueOf(val.swappable()), val.equipSound().asMinimalString());
+            }
+
+            public Equippable parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final Equippable.Builder bld = Equippable.equippable(EquipmentSlot.valueOf(parts[0]));
+                if (!ClassUtil.check(parts, 6, false)) return bld.build();
+                if (!StringUtil.isNA(parts[1])) bld.assetId(Key.key(parts[1]));
+                return bld.damageOnHurt(Boolean.parseBoolean(parts[2])).dispensable(Boolean.parseBoolean(parts[3]))
+                    .swappable(Boolean.parseBoolean(parts[4])).equipSound(Key.key(parts[5])).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.FIREWORKS, new DataParser.Parser<>() {
+            public String write(final Fireworks val) {
+                final StringBuilder sb = new StringBuilder();
+                sb.append(val.flightDuration());
+                for (final FireworkEffect fe : val.effects()) {
+                    final List<Color> clrs = fe.getColors();
+                    final Color clr = clrs.isEmpty() ? Color.WHITE : clrs.getFirst();
+                    final List<Color> fds = fe.getFadeColors();
+                    final Color fd = fds.isEmpty() ? clr : fds.getFirst();
+                    sb.append(seps[1].get()).append(String.join(seps[2].get(), fe.getType().name(), String.valueOf(clr.asARGB()),
+                        String.valueOf(fd.asARGB()), String.valueOf(fe.hasFlicker()), String.valueOf(fe.hasTrail())));
+                }
+                return sb.toString();
+            }
+
+            public Fireworks parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final Fireworks.Builder bld = Fireworks.fireworks();
+                if (!ClassUtil.check(parts, 1, true)) return bld.build();
+                bld.flightDuration(NumUtil.intOf(parts[0], 1));
+                for (int i = 1; i != parts.length; i++) {
+                    final String[] mod = seps[2].split(parts[i]);
+                    if (!ClassUtil.check(mod, 5, false)) continue;
+                    bld.addEffect(FireworkEffect.builder().with(FireworkEffect.Type.valueOf(mod[0]))
+                        .withColor(Color.fromARGB(NumUtil.intOf(mod[1], 0))).withFade(Color.fromARGB(NumUtil.intOf(mod[2], 0)))
+                        .flicker(Boolean.parseBoolean(mod[3])).trail(Boolean.parseBoolean(mod[4])).build());
+                }
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.FOOD, new DataParser.Parser<>() {
+            public String write(final FoodProperties val) {
+                return String.join(seps[1].get(), String.valueOf(val.nutrition()),
+                    StringUtil.toSigFigs(val.saturation(), (byte) 2), String.valueOf(val.canAlwaysEat()));
+            }
+
+            public FoodProperties parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final FoodProperties.Builder bld = FoodProperties.food();
+                if (!ClassUtil.check(parts, 3, false)) return bld.build();
+                return bld.nutrition(NumUtil.intOf(parts[0], 0)).saturation(NumUtil.floatOf(parts[1], 0f))
+                    .canAlwaysEat(Boolean.parseBoolean(parts[2])).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.USE_COOLDOWN, new DataParser.Parser<>() {
+            public String write(final UseCooldown val) {
+                final Key key = val.cooldownGroup();
+                return val.seconds() + seps[1].get() + (key == null ? StringUtil.NA : key.asMinimalString());
+            }
+
+            public UseCooldown parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final UseCooldown.Builder bld = UseCooldown.useCooldown(NumUtil.floatOf(parts[0], 0f));
+                if (!ClassUtil.check(parts, 2, false)) return bld.build();
+                if (!StringUtil.isNA(parts[1])) bld.cooldownGroup(Key.key(parts[1]));
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.TRIM, new DataParser.Parser<>() {
+            public String write(final ItemArmorTrim val) {
+                return ofKey(val.armorTrim().getMaterial()) + seps[1].get() + ofKey(val.armorTrim().getPattern());
+            }
+
+            public ItemArmorTrim parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                if (!ClassUtil.check(parts, 2, true)) return null;
+                return ItemArmorTrim.itemArmorTrim(new ArmorTrim(IStrap.get(Key.key(parts[parts.length - 2]), TrimMaterial.IRON),
+                    IStrap.get(Key.key(parts[parts.length - 1]), TrimPattern.COAST))).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.MAX_DAMAGE, new DataParser.Parser<>() {
+            public String write(final Integer val) {
+                return val.toString();
+            }
+
+            public Integer parse(final String str) {
+                return NumUtil.intOf(str, 1);
+            }
+        });
+        dataParser.put(DataComponentTypes.POTION_CONTENTS, new DataParser.Parser<>() {
+            public String write(final PotionContents val) {
+                final StringBuilder sb = new StringBuilder();
+                final Color clr = val.customColor();
+                sb.append(ofKey(val.potion())).append(seps[1].get()).append(clr == null ? StringUtil.NA : clr.asARGB());
+                for (final PotionEffect pe : val.customEffects()) {
+                    sb.append(seps[1].get()).append(String.join(seps[2].get(), ofKey(pe.getType()), String.valueOf(pe.getDuration()),
+                        String.valueOf(pe.getAmplifier()), String.valueOf(pe.hasParticles() && pe.hasIcon())));
+                }
+                return sb.toString();
+            }
+
+            public PotionContents parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final PotionContents.Builder bld = PotionContents.potionContents();
+                if (!ClassUtil.check(parts, 2, true)) return bld.build();
+                bld.potion(Registry.POTION.get(Key.key(parts[0])));
+                if (!StringUtil.isNA(parts[1])) bld.customColor(Color.fromARGB(NumUtil.intOf(parts[1], 0)));
+                for (int i = 2; i != parts.length; i++) {
+                    final String[] mod = seps[2].split(parts[i]);
+                    if (!ClassUtil.check(mod, 4, false)) continue;
+                    final boolean vis = Boolean.parseBoolean(mod[3]);
+                    bld.addCustomEffect(new PotionEffect(Registry.POTION_EFFECT_TYPE.get(Key.key(mod[0])),
+                        NumUtil.intOf(mod[1], 0), NumUtil.intOf(mod[2], 0), !vis, vis, vis));
+                }
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.MAX_STACK_SIZE, new DataParser.Parser<>() {
+            public String write(final Integer val) {
+                return val.toString();
+            }
+
+            public Integer parse(final String str) {
+                return NumUtil.intOf(str, 1);
+            }
+        });
+        dataParser.put(DataComponentTypes.REPAIRABLE, new DataParser.Parser<>() {
+            public String write(final Repairable val) {
+                return String.join(seps[1].get(), val.types().values().stream()
+                    .map(tk -> ofKey(tk)).toArray(i -> new String[i]));
+            }
+
+            public Repairable parse(final String str) {
+                return Repairable.repairable(IStrap.regSetOf(Arrays.stream(seps[1].split(str))
+                    .map(Key::key).toList(), RegistryKey.ITEM));
+            }
+        });
+        dataParser.put(DataComponentTypes.RARITY, new DataParser.Parser<>() {
+            public String write(final ItemRarity val) {
+                return val.name();
+            }
+
+            public ItemRarity parse(final String str) {
+                return ItemRarity.valueOf(str);
+            }
+        });
+        dataParser.put(DataComponentTypes.TOOL, new DataParser.Parser<>() {
+            public String write(final Tool val) {
+                final StringBuilder sb = new StringBuilder();
+                sb.append(StringUtil.toSigFigs(val.defaultMiningSpeed(), (byte) 2))
+                    .append(seps[1].get()).append(val.damagePerBlock());
+                for (final Tool.Rule rl : val.rules()) {
+                    if (rl.speed() == null) continue;
+                    final List<String> rls = new ArrayList<>();
+                    rls.add(StringUtil.toSigFigs(rl.speed(), (byte) 2));
+                    rls.add(rl.correctForDrops().name());
+                    rls.addAll(rl.blocks().values().stream().map(tk -> ofKey(tk)).toList());
+                    sb.append(seps[1].get()).append(String.join(seps[2].get(), rls.toArray(new String[0])));
+                }
+                return sb.toString();
+            }
+
+            public Tool parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final Tool.Builder bld = Tool.tool();
+                if (!ClassUtil.check(parts, 2, true)) return bld.build();
+                bld.defaultMiningSpeed(NumUtil.floatOf(parts[0], 1)).damagePerBlock(NumUtil.intOf(parts[1], 0));
+                for (int i = 2; i != parts.length; i++) {
+                    final String[] mod = seps[2].split(parts[i]);
+                    if (!ClassUtil.check(mod, 2, true)) continue;
+                    final List<Key> bks = new ArrayList<>(mod.length - 2);
+                    for (int j = 2; j != mod.length; j++) {
+                        bks.add(Key.key(mod[j]));
+                    }
+                    bld.addRule(Tool.rule(IStrap.regSetOf(bks, RegistryKey.BLOCK),
+                        NumUtil.floatOf(mod[0], 0f), TriState.valueOf(mod[1])));
+                }
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.TOOLTIP_DISPLAY, new DataParser.Parser<>() {
+            public String write(final TooltipDisplay val) {
+                final StringBuilder sb = new StringBuilder(String.valueOf(val.hideTooltip()));
+                for (final DataComponentType dtc : val.hiddenComponents()) {
+                    sb.append(seps[1].get()).append(ofKey(dtc));
+                }
+                return sb.toString();
+            }
+
+            public TooltipDisplay parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final TooltipDisplay.Builder bld = TooltipDisplay.tooltipDisplay();
+                if (!ClassUtil.check(parts, 1, true)) return bld.build();
+                bld.hideTooltip(Boolean.parseBoolean(parts[0]));
+                final Set<DataComponentType> dtcs = new HashSet<>();
+                for (int i = 1; i != parts.length; i++) {
+                    dtcs.add(IStrap.get(Key.key(parts[i]), DataComponentTypes.BREAK_SOUND));
+                }
+                return bld.hiddenComponents(dtcs).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.PROFILE, new DataParser.Parser<>() {
+            public String write(final ResolvableProfile val) {
+                final StringBuilder sb = new StringBuilder(val.name() == null ? StringUtil.NA : val.name());
+                sb.append(seps[1].get()).append(val.uuid() == null ? StringUtil.NA : val.uuid().toString());
+                for (final ProfileProperty pp : val.properties()) {
+                    final String sig = pp.getSignature();
+                    if (sig == null)
+                        sb.append(seps[1].get()).append(String.join(seps[2].get(), pp.getName(), pp.getValue()));
+                    else sb.append(seps[1].get()).append(String.join(seps[2].get(), pp.getName(), pp.getValue(), sig));
+                }
+                return sb.toString();
+            }
+
+            public ResolvableProfile parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final ResolvableProfile.Builder bld = ResolvableProfile.resolvableProfile();
+                if (!ClassUtil.check(parts, 2, true)) return bld.build();
+                if (!StringUtil.isNA(parts[0])) bld.name(parts[0]);
+                if (!StringUtil.isNA(parts[1])) bld.uuid(UUID.fromString(parts[1]));
+                final List<ProfileProperty> dtcs = new ArrayList<>();
+                for (int i = 2; i != parts.length; i++) {
+                    final String[] pps = seps[2].split(parts[i]);
+                    if (!ClassUtil.check(pps, 2, true)) return bld.build();
+                    dtcs.add(new ProfileProperty(pps[0], pps[1],
+                        pps.length == 3 ? pps[2] : null));
+                }
+                return bld.addProperties(dtcs).build();
+            }
+        });
+        dataParser.put(DataComponentTypes.BLOCKS_ATTACKS, new DataParser.Parser<>() {
+            public String write(final BlocksAttacks val) {
+                return String.join(seps[1].get(), String.valueOf(val.blockDelaySeconds()),
+                    String.valueOf(val.disableCooldownScale()),
+                    val.bypassedBy() == null ? StringUtil.NA : val.bypassedBy().key().asMinimalString(),
+                    val.blockSound() == null ? StringUtil.NA : val.blockSound().asMinimalString(),
+                    val.disableSound() == null ? StringUtil.NA : val.disableSound().asMinimalString());
+            }
+
+            public BlocksAttacks parse(final String str) {
+                final String[] parts = seps[1].split(str);
+                final BlocksAttacks.Builder bld = BlocksAttacks.blocksAttacks();
+                if (!ClassUtil.check(parts, 5, false)) return bld.build();
+                bld.blockDelaySeconds(NumUtil.floatOf(parts[0], 0f));
+                bld.disableCooldownScale(NumUtil.floatOf(parts[1], 1f));
+                if (!StringUtil.isNA(parts[2])) bld.bypassedBy(TagKey
+                    .create(RegistryKey.DAMAGE_TYPE, Key.key(parts[2])));
+                if (!StringUtil.isNA(parts[3])) bld.blockSound(Key.key(parts[3]));
+                if (!StringUtil.isNA(parts[4])) bld.disableSound(Key.key(parts[4]));
+                return bld.build();
+            }
+        });
+        dataParser.put(DataComponentTypes.WEAPON, new DataParser.Parser<>() {
+            public String write(final Weapon val) {
+                return val.itemDamagePerAttack()
+                    + seps[1].get() + val.disableBlockingForSeconds();
+            }
+
+            public Weapon parse(final String str) {
+                final String[] parts = seps[1].split(str, true);
+                final Weapon.Builder bld = Weapon.weapon();
+                if (!ClassUtil.check(parts, 2, false)) return bld.build();
+                return bld.itemDamagePerAttack(NumUtil.intOf(parts[0], 1))
+                    .disableBlockingForSeconds(NumUtil.floatOf(parts[1], 0f)).build();
+            }
+        });
+        return dataParser;
+    }
+
+    public static String write(final @Nullable ItemStack is) {
+        if (is == null || ItemType.AIR.equals(is.getType().asItemType())) return "air";
+        final StringBuilder res = new StringBuilder(ofKey(is.getType().asItemType()) + StringUtil.Split.MEDIUM.get() + is.getAmount());
+        for (final DataComponentType dtc : is.getDataTypes()) {
+            if (!is.isDataOverridden(dtc)) continue;
+            switch (dtc) {
+                case final DataComponentType.NonValued nvd -> {
+                    if (nvd.key().value().equals(OLD_PDC)) continue;
+                    res.append(StringUtil.Split.LARGE.get()).append(ofKey(nvd));
+                }
+                case final DataComponentType.Valued<?> vld -> append(is, res, vld);
+                default -> {}
+            }
         }
-        sign.update();
+        final PersistentDataContainerView pdc = is.getPersistentDataContainer();
+        if (pdc.isEmpty()) return res.toString();
+        try {
+            res.append(StringUtil.Split.LARGE.get()).append(PDC.ID)
+                .append(StringUtil.Split.MEDIUM.get())
+                .append(Base64Coder.encode(pdc.serializeToBytes()));
+        } catch (IOException e) {}
+        return res.toString();
+    }
+
+    public static ItemStack parse(final @Nullable String str) {
+        if (str == null || str.startsWith("air")) return ItemType.AIR.createItemStack();
+        final String[] split = seps[0].split(str);
+        final String[] idt = seps[1].split(split[0]);
+        final ItemType tp;
+        try {
+            tp = IStrap.get(Key.key(idt[0]), ItemType.AIR);
+        } catch (InvalidKeyException e) {
+            Main.log_err("Couldn't parse type for " + str);
+            e.printStackTrace();
+            return ItemType.AIR.createItemStack();
+        }
+        if (tp == ItemType.AIR) {
+            Main.log_err("Failed parsing item type for " + str);
+            return tp.createItemStack();
+        }
+        final ItemStack it = tp.createItemStack(idt.length == 2 ? NumUtil.intOf(idt[1], 1) : 1);
+        String data = null;
+        try {
+            for (int i = 1; i != split.length; i++) {
+                data = split[i];
+                final String[] dsp = seps[1].split(data, true);
+                if (dsp.length == 1) {
+                    if (Registry.DATA_COMPONENT_TYPE.get(Key.key(data))
+                        instanceof final DataComponentType.NonValued nvd) {
+                        it.setData(nvd);
+                    }
+                    continue;
+                }
+                if (PDC.ID.equals(dsp[0])) {
+                    it.editPersistentDataContainer(pdc -> {
+                        try {pdc.readFromBytes(Base64Coder.decode(dsp[1]));}
+                        catch (IOException | IllegalArgumentException e) {
+                            Main.log_warn("Couldnt parse pdc of " + dsp[1] + ", trying old");
+                            final DataParser.Parser<PDC.Data> prs = parsers.get(DataParser.PDC_TYPE);
+                            if (prs != null) Nms.setCustomData(it, prs.parse(dsp[1]));
+                        }
+                    });
+                    continue;
+                }
+                if (Registry.DATA_COMPONENT_TYPE.get(Key.key(dsp[0]))
+                    instanceof final DataComponentType.Valued<?> vld) {
+                    append(it, dsp[1], vld);
+                }
+            }
+        } catch (NullPointerException | IllegalArgumentException | InvalidKeyException e) {
+            Main.log_err("Couldn't parse data " + data);
+            e.printStackTrace();
+            return it;
+        }
+        return it;
+    }
+
+    private static <D> void append(final ItemStack it, final StringBuilder sb, final DataComponentType.Valued<D> dtc) {
+        final D val = it.getData(dtc); if (val == null) return;
+        final DataParser.Parser<D> prs = parsers.get(dtc); if (prs == null) return;
+        sb.append(seps[0].get()).append(ofKey(dtc)).append(seps[1].get()).append(prs.write(val));
+    }
+
+    private static <D> void append(final ItemStack it, final String data, final DataComponentType.Valued<D> dtc) {
+        final DataParser.Parser<D> prs = parsers.get(dtc); if (prs == null) return;
+        final D pd = prs.parse(data);
+        if (pd == null) {
+            Main.log_warn("Couldnt parse '" + data + "' for " + dtc.key().asMinimalString());
+            return;
+        }
+        it.setData(dtc, pd);
+    }
+
+    private static <K extends net.kyori.adventure.key.Keyed> @Nullable String ofKey(final @Nullable K k) {
+        if (k == null) return null;
+        return k.key().asMinimalString();
+    }
+
+    private static <K extends Keyed> @Nullable String ofRegKey(final Registry<K> reg, final @Nullable K k) {
+        if (k == null) return null;
+        final NamespacedKey key = reg.getKey(k);
+        return key == null ? null : key.asMinimalString();
     }
 
     public static double getTrimMod(final ItemStack ti, final Attribute atr) {

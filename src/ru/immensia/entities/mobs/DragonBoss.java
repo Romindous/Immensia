@@ -15,7 +15,7 @@ import ru.immensia.entities.CustomEntity;
 import ru.immensia.entities.Mobs;
 import ru.immensia.utils.EntityUtil;
 import ru.immensia.utils.NumUtil;
-import ru.immensia.utils.colors.TCUtil;
+import ru.immensia.utils.strings.TCUtil;
 import ru.immensia.utils.locs.AreaSpawner;
 import ru.immensia.utils.locs.BVec;
 import ru.immensia.utils.locs.LocUtil;

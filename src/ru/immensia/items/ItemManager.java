@@ -23,7 +23,7 @@ import org.bukkit.util.Vector;
 import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.utils.ItemUtil;
-import ru.immensia.utils.colors.TCUtil;
+import ru.immensia.utils.strings.TCUtil;
 
 
 public class ItemManager implements Listener {

@@ -37,7 +37,7 @@ import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.utils.ItemUtil;
 import ru.immensia.utils.EntityUtil;
-import ru.immensia.utils.StringUtil;
+import ru.immensia.utils.strings.StringUtil;
 import ru.immensia.utils.versions.Nms;
 
 public class PvPManager implements Listener {

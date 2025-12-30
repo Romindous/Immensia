@@ -1,4 +1,4 @@
-package ru.immensia.utils;
+package ru.immensia.utils.strings;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

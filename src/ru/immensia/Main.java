@@ -15,7 +15,7 @@ import ru.immensia.entities.EntityManager;
 import ru.immensia.entities.Mobs;
 import ru.immensia.entities.PvPManager;
 import ru.immensia.objects.IConfigManager;
-import ru.immensia.utils.colors.TCUtil;
+import ru.immensia.utils.strings.TCUtil;
 
 public class Main extends JavaPlugin {
     

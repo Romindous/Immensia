@@ -1,4 +1,4 @@
-package ru.immensia.utils.colors;
+package ru.immensia.utils.strings;
 
 import java.util.HashMap;
 import java.util.Map;

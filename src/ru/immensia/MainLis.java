@@ -50,10 +50,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import ru.immensia.entities.mobs.DragonBoss;
+import ru.immensia.items.crafts.Crafts;
 import ru.immensia.utils.BlockUtil;
 import ru.immensia.utils.ItemUtil;
 import ru.immensia.utils.EntityUtil;
-import ru.immensia.utils.colors.TCUtil;
+import ru.immensia.utils.strings.TCUtil;
 import ru.immensia.utils.locs.BVec;
 import ru.immensia.utils.locs.LocUtil;
 import ru.immensia.utils.versions.Nms;
@@ -252,6 +253,15 @@ public class MainLis implements Listener {
 		if (e.getResult() == Result.DENY || e.isCancelled()) return;
 		final Inventory ci = e.getClickedInventory();
 		if (ci == null) return;
+
+		final String title = TCUtil.strip(e.getView().title());
+		if (ci.getSize() == Crafts.MENU_SIZE && title.startsWith(Crafts.MENU_TITLE)) {
+			if (Crafts.clickEditor(e.getWhoClicked(), ci,
+				title.substring(title.lastIndexOf(' ') + 1), e.getSlot())) {
+				e.setResult(Result.DENY);
+			}
+			return;
+		}
 
 		final ItemStack curr = e.getCurrentItem();
 		if (curr == null) return;
