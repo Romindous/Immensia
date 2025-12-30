@@ -183,11 +183,10 @@ public class PvPManager implements Listener {
 
         if (target instanceof Mob || target instanceof ArmorStand) {// # v M
             final ItemStack shd = target.getEquipment().getItemInOffHand();
-            if (ItemUtil.is(shd, ItemType.SHIELD) && Main.srnd.nextBoolean()) {
+            if (ItemUtil.is(shd, ItemType.SHIELD)) {
                 target.getWorld().playSound(target.getLocation(),
-                    Sound.ITEM_SHIELD_BLOCK, 1f, 1f);
-                e.setDamage(0);
-                e.setCancelled(true);
+                    Sound.ITEM_SHIELD_BLOCK, 1f, 0.6f);
+                e.setDamage(e.getDamage() * 0.6d);
                 return;
             }
 

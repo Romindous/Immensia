@@ -401,7 +401,7 @@ public class MainLis implements Listener {
         }
     }
 
-	private static final int SPAWN_DST = 120, DST_DEL = 16;
+	private static final int SPAWN_DST = 120, DST_DEL = 20;
 
 	@EventHandler
 	public void onSpawn(final CreatureSpawnEvent e) {
@@ -415,7 +415,7 @@ public class MainLis implements Listener {
 
 		final BVec loc = BVec.of(e.getLocation());
 		final int dstSq = loc.distSq(cr.getWorld().getSpawnLocation()) >> DST_DEL;
-		final Player near = LocUtil.getClsChEnt(BVec.of(loc), SPAWN_DST, Player.class, null);
+		final Player near = LocUtil.getClsChEnt(loc, SPAWN_DST, Player.class, null);
 		if (near == null) {
 			cr.remove();
 			return;
@@ -519,8 +519,8 @@ public class MainLis implements Listener {
 		final AttributeInstance wtr = cr.getAttribute(Attribute.WATER_MOVEMENT_EFFICIENCY);
 		if (wtr != null) wtr.setBaseValue(wtr.getBaseValue() * (0.02d * dstSq + 1d));
 		final AttributeInstance scl = cr.getAttribute(Attribute.SCALE);
-		if (scl != null) scl.setBaseValue(scl.getBaseValue() * (0.04d * dstSq + 1d)
-			+ (Main.srnd.nextFloat() - 0.5f) * 0.4d);
+		if (scl != null) scl.setBaseValue(scl.getBaseValue()
+            * (0.01d * dstSq + 1d + (Main.srnd.nextFloat() - 0.5f) * 0.2d));
 	}
 
 	private static final int chSt = 10;

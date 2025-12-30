@@ -11,7 +11,9 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import ru.immensia.boot.Registries;
+import ru.immensia.entities.EntityManager;
 import ru.immensia.entities.Mobs;
+import ru.immensia.entities.PvPManager;
 import ru.immensia.objects.IConfigManager;
 import ru.immensia.utils.colors.TCUtil;
 
@@ -54,9 +56,12 @@ public class Main extends JavaPlugin {
 //		relics = new Relics();
 		world = Bukkit.getWorlds().getFirst();
 		
-		getServer().getConsoleSender().sendMessage("§2Daaria is on!");
+		getServer().getConsoleSender().sendMessage("§2Immensia is on!");
 		
 		getServer().getPluginManager().registerEvents(new MainLis(), this);
+
+        new PvPManager();
+        new EntityManager();
 
 //		events = new EventManager();
 	}
@@ -64,7 +69,7 @@ public class Main extends JavaPlugin {
 	@Override
 	public void onDisable() {
 //		if (EventManager.prog != null) EventManager.prog.crash();
-		getServer().getConsoleSender().sendMessage("§4Daaria is off!");
+		getServer().getConsoleSender().sendMessage("§4Immensia is off!");
 	}
 
 	public static void log(String s) {

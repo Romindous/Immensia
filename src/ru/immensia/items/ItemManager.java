@@ -339,7 +339,7 @@ public class ItemManager implements Listener {
                 e.setResult(Event.Result.DENY);
                 e.setCurrentItem(ItemUtil.air);
                 for (final HumanEntity he : e.getViewers()) {
-                    he.sendMessage(TCUtil.form(Main.PREFIX + "<red>Эта реликвия уже создана!"));
+                    he.sendMessage(TCUtil.form(Main.PREFIX + "<red>This relic is already crafted!"));
                 }
                 return;
             }
@@ -358,7 +358,7 @@ public class ItemManager implements Listener {
             it != null, cr.hasData(DataComponentTypes.DAMAGE), it.hasData(DataComponentTypes.DAMAGE));*/
         if (e.getClick().isLeftClick() && it != null && (cr.hasData(DataComponentTypes.DAMAGE) || it.hasData(DataComponentTypes.DAMAGE))
             && (BUNDLES.contains(cr.getType().asItemType()) || BUNDLES.contains(it.getType().asItemType()))) {
-            he.sendMessage(TCUtil.form(Main.PREFIX + "<red>Нельзя класть это в мешок!"));
+            he.sendMessage(TCUtil.form(Main.PREFIX + "<red>You can't put this in a bundle!"));
             e.setResult(Event.Result.DENY);
             return;
         }
@@ -368,7 +368,7 @@ public class ItemManager implements Listener {
         }
         if (SpecialItem.get(it) != null) {
             he.sendMessage(TCUtil
-                .form(Main.PREFIX + "<red>Нельзя передвигать реликвии!"));
+                .form(Main.PREFIX + "<red>You can't move relics around!"));
             e.setResult(Event.Result.DENY);
         }
     }
