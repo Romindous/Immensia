@@ -50,7 +50,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import ru.immensia.entities.mobs.DragonBoss;
-import ru.immensia.items.crafts.Crafts;
+import ru.immensia.items.crafts.CraftManager;
 import ru.immensia.utils.BlockUtil;
 import ru.immensia.utils.ItemUtil;
 import ru.immensia.utils.EntityUtil;
@@ -88,7 +88,7 @@ public class MainLis implements Listener {
 
 	@EventHandler
 	public void onLogin(final PlayerJoinEvent e) {
-//		e.getPlayer().discoverRecipes(Crafts.crafts.values().stream().map(c -> ((Keyed) c.rec()).getKey()).toList());
+        CraftManager.discRecs(e.getPlayer());
 	}
 
 
@@ -255,8 +255,8 @@ public class MainLis implements Listener {
 		if (ci == null) return;
 
 		final String title = TCUtil.strip(e.getView().title());
-		if (ci.getSize() == Crafts.MENU_SIZE && title.startsWith(Crafts.MENU_TITLE)) {
-			if (Crafts.clickEditor(e.getWhoClicked(), ci,
+		if (ci.getSize() == CraftManager.MENU_SIZE && title.startsWith(CraftManager.MENU_TITLE)) {
+			if (CraftManager.clickEditor(e.getWhoClicked(), ci,
 				title.substring(title.lastIndexOf(' ') + 1), e.getSlot())) {
 				e.setResult(Result.DENY);
 			}
@@ -476,8 +476,8 @@ public class MainLis implements Listener {
 				break;
 			case AXOLOTL, BLAZE, CAVE_SPIDER, CREEPER, ELDER_GUARDIAN,
 				 ENDERMITE, EVOKER, GHAST, GUARDIAN, HOGLIN, IRON_GOLEM, MAGMA_CUBE,
-				 POLAR_BEAR, RAVAGER, SHULKER, SILVERFISH, SKELETON_HORSE,
-				 SLIME, SNOW_GOLEM, SPIDER, WITCH, WITHER, WOLF, ZOGLIN, ZOMBIE_HORSE:
+				 POLAR_BEAR, RAVAGER, SHULKER, SILVERFISH, SKELETON_HORSE, CAMEL_HUSK,
+                 SLIME, SNOW_GOLEM, SPIDER, WITCH, WITHER, WOLF, ZOGLIN, ZOMBIE_HORSE:
 				break;
 			case PHANTOM:
 				((Phantom) cr).setSize(Main.srnd.nextInt(4));

@@ -72,4 +72,9 @@ public class IdChoice extends MaterialChoice {
     public int hashCode() {
         return super.hashCode() + Objects.hashCode(id);
     }
+
+    @Override
+    public String toString() {
+        return "IdChoice{" + "choices=" + getChoices() + '}';
+    }
 }

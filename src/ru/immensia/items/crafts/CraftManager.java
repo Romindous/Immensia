@@ -25,7 +25,6 @@ import org.bukkit.event.inventory.FurnaceSmeltEvent;
 import org.bukkit.event.inventory.FurnaceStartSmeltEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.inventory.PrepareSmithingEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.RecipeChoice.ExactChoice;
 import ru.immensia.Main;
@@ -38,34 +37,40 @@ import ru.immensia.utils.ItemUtil;
 import ru.immensia.utils.strings.TCUtil;
 
 
-public final class Crafts implements Listener {
+public final class CraftManager implements Listener {
 
     public static final Map<NamespacedKey, Craft> crafts = new HashMap<>();
     public static final String MENU_TITLE = "Recipe ";
     public static final int MENU_SIZE = 27;
 
-    public Crafts() {
+    private static final String[] REMOVED = {"ender_eye"};
+
+    public CraftManager() {
         reload();
     }
 
     public void reload() {
         HandlerList.unregisterAll(this);
 
-        final Iterator<NamespacedKey> rki = Crafts.crafts.keySet().iterator();
+        for (final String rk : REMOVED) {
+            Bukkit.removeRecipe(NamespacedKey.minecraft(rk));
+        }
+
+        final Iterator<NamespacedKey> rki = CraftManager.crafts.keySet().iterator();
         while (rki.hasNext()) {
             Bukkit.removeRecipe(rki.next());
             rki.remove();
         }
 
         Bukkit.getPluginManager().registerEvents(this, Main.plug);
-        Crafts.loadCrafts();
+        CraftManager.loadCrafts();
         new CraftCmd();
 
         Main.log("§2Крафты запущены!");
     }
 
     public void onDisable() {
-        Crafts.crafts.clear();
+        CraftManager.crafts.clear();
         Main.log("§6Крафты выключены!");
     }
 
@@ -77,12 +82,10 @@ public final class Crafts implements Listener {
         try {
             Files.createDirectories(CRAFT_DIR);
             Files.createFile(DEF_FILE);
-        } catch (IOException e) {
-            Main.log("<amber>Craft files are already created");
-        }
+        } catch (IOException e) {}
         try (final Stream<Path> pths = Files.list(CRAFT_DIR)) {
             pths.forEach(pth -> {
-                if (!pth.endsWith(".yml")) return;
+                if (!pth.toString().endsWith(".yml")) return;
                 final YamlConfiguration crf = YamlConfiguration.loadConfiguration(pth.toFile());
                 Main.log("<yellow>Found craft file " + pth.getFileName().toString());
                 final Set<String> crfts = crf.getKeys(false);
@@ -209,11 +212,6 @@ public final class Crafts implements Listener {
         return null;
     }
 
-    @EventHandler
-    public void onJoin(final PlayerJoinEvent e) {
-        discRecs(e.getPlayer());
-    }
-
     public static void discRecs(final Player p) {
         final List<NamespacedKey> rls = new ArrayList<>();
         for (final Entry<NamespacedKey, Craft> en : crafts.entrySet()) {
@@ -238,7 +236,7 @@ public final class Crafts implements Listener {
                     }
                 }
                 case ShapedRecipe shr -> {
-                    final ShapedRecipe src = Crafts.getRecipe(shr.getKey(), ShapedRecipe.class);
+                    final ShapedRecipe src = CraftManager.getRecipe(shr.getKey(), ShapedRecipe.class);
                     final ItemStack[] mtx = e.getInventory().getMatrix();
                     if (src == null) {
                         for (final ItemStack it : mtx) {
@@ -273,7 +271,7 @@ public final class Crafts implements Listener {
                     }
                 }
                 case ShapelessRecipe slr -> {
-                    final ShapelessRecipe src = Crafts.getRecipe(slr.getKey(), ShapelessRecipe.class);
+                    final ShapelessRecipe src = CraftManager.getRecipe(slr.getKey(), ShapelessRecipe.class);
                     final ItemStack[] mtx = e.getInventory().getMatrix();
                     if (src == null) {
                         for (final ItemStack it : mtx) {
@@ -326,7 +324,7 @@ public final class Crafts implements Listener {
         final Recipe rc = e.getRecipe();
         if (rc == null) return;
         if (e.getBlock().getState() instanceof Furnace) {
-            final CookingRecipe<?> src = Crafts.getRecipe(((Keyed) rc).getKey(), CookingRecipe.class);
+            final CookingRecipe<?> src = CraftManager.getRecipe(((Keyed) rc).getKey(), CookingRecipe.class);
             final ItemStack ti = e.getSource();
             if (src != null) {
                 if (src.getInputChoice().test(ti)) return;
@@ -350,7 +348,7 @@ public final class Crafts implements Listener {
     public void onStCook(final FurnaceStartSmeltEvent e) {
         final Recipe rc = e.getRecipe();
         if (e.getBlock().getState() instanceof Furnace) {
-            final CookingRecipe<?> src = Crafts.getRecipe(((Keyed) rc).getKey(), CookingRecipe.class);
+            final CookingRecipe<?> src = CraftManager.getRecipe(((Keyed) rc).getKey(), CookingRecipe.class);
             final ItemStack ti = e.getSource();
             if (src == null) {
                 if (!ItemManager.isCustom(ti)) return;
@@ -364,7 +362,7 @@ public final class Crafts implements Listener {
         final SmithingInventory si = e.getInventory();
         final Recipe rc = si.getRecipe();
         if (!(rc instanceof SmithingRecipe)) return;
-        final SmithingRecipe src = Crafts.getRecipe(((Keyed) rc).getKey(), SmithingRecipe.class);
+        final SmithingRecipe src = CraftManager.getRecipe(((Keyed) rc).getKey(), SmithingRecipe.class);
         final ItemStack ti = si.getInputMineral();
         if (src == null) {
             if (!ItemManager.isCustom(ti)) return;
@@ -377,7 +375,7 @@ public final class Crafts implements Listener {
     @EventHandler
     public void onSCut(final PlayerStonecutterRecipeSelectEvent e) {
         final StonecuttingRecipe rc = e.getStonecuttingRecipe();
-        final StonecuttingRecipe src = Crafts.getRecipe(rc.getKey(), StonecuttingRecipe.class);
+        final StonecuttingRecipe src = CraftManager.getRecipe(rc.getKey(), StonecuttingRecipe.class);
         final StonecutterInventory sci = e.getStonecutterInventory();
         final ItemStack ti = sci.getInputItem();
         if (src == null) {
@@ -579,8 +577,7 @@ public final class Crafts implements Listener {
     }*/
 
     private static final int rad = 3;
-    public static void openEditor(final Player pl, final String name, final Recipe recipe) {
-        if (recipe == null) return;
+    public static void openEditor(final HumanEntity pl, final String name, final @Nullable Recipe recipe) {
         final ItemType tp;
         final ItemStack[] mtx = new ItemStack[9];
         switch (recipe) {
@@ -600,9 +597,11 @@ public final class Crafts implements Listener {
                 break;
             case final ShapelessRecipe rec:
                 tp = ItemType.ENDER_CHEST;
+                for (final RecipeChoice rc : rec.getChoiceList()) {
+                }
                 final Iterator<RecipeChoice> rci = rec.getChoiceList().iterator();
                 for (int i = 0; i != mtx.length; i++) {
-                    if (rci.hasNext() && rci.next() instanceof IdChoice ic) {
+                    if (rci.hasNext() && rci.next() instanceof final IdChoice ic) {
                         mtx[i] = ic.getItemStack();
                     }
                 }
@@ -631,9 +630,11 @@ public final class Crafts implements Listener {
             case null:
             default:
                 tp = ItemType.CHEST;
+                Arrays.fill(mtx, ItemUtil.air);
                 break;
         }
-        openEditor(pl, name, tp, recipe.getResult(), mtx);
+        openEditor(pl, name, tp, recipe == null
+            ? ItemUtil.air : recipe.getResult(), mtx);
     }
 
     private static @Nullable ItemStack choiceIt(final RecipeChoice rc) {
@@ -641,7 +642,7 @@ public final class Crafts implements Listener {
     }
 
     private static final int TYPE_SLOT = 9, RES_SLOT = 14, RDY_SLOT = 16, ARR_SLOT = 13, MTX_FST = 1, DMG_TAG = 1337;
-    public static  void openEditor(final Player pl, final String name, final ItemType type, final ItemStack result, final ItemStack... mtx) {
+    public static void openEditor(final HumanEntity pl, final String name, final ItemType type, final ItemStack result, final ItemStack... mtx) {
         final ItemStack[] invIts = new ItemStack[MENU_SIZE];
         Arrays.fill(invIts, new ItemBuilder(ItemType.LIGHT_GRAY_STAINED_GLASS_PANE)
             .name("§0.").maxDamage(DMG_TAG).build());
@@ -650,7 +651,7 @@ public final class Crafts implements Listener {
             invIts[i / 3 * 9 + i % 3 + MTX_FST] = mtx[i];
         }
         invIts[RES_SLOT] = result;
-        invIts[TYPE_SLOT] = makeIcon(type);
+        invIts[TYPE_SLOT] = new ItemBuilder(makeIcon(type)).maxDamage(DMG_TAG).build();
         invIts[ARR_SLOT] = new ItemBuilder(ItemType.IRON_NUGGET).name("§7->").maxDamage(DMG_TAG).build();
         invIts[RDY_SLOT] = new ItemBuilder(ItemType.GREEN_CONCRETE_POWDER).name("§aГотово!").maxDamage(DMG_TAG).build();
         final Inventory cri = Bukkit.createInventory(null, MENU_SIZE, TCUtil.form("<yellow>" + MENU_TITLE + name));
@@ -660,12 +661,51 @@ public final class Crafts implements Listener {
 
     public static boolean clickEditor(final HumanEntity pl, final Inventory inv, final String key, final int slot) {
         final ItemStack cli = inv.getItem(slot);
+        final ItemStack tis = inv.getItem(TYPE_SLOT);
+        final ItemStack rst = inv.getItem(RES_SLOT);
+        final ItemType tp = tis == null
+            ? ItemType.CHEST : tis.getType().asItemType();
         if (cli != null && Integer.valueOf(DMG_TAG)
             .equals(cli.getData(DataComponentTypes.MAX_DAMAGE))) {
-            if (slot != RDY_SLOT) return true;
+            switch (slot) {
+                case RDY_SLOT: break;
+                case TYPE_SLOT:
+                    final ItemType ntp;
+                    final ItemStack[] mtx = new ItemStack[9];
+                    if (ItemType.ENDER_CHEST.equals(tp)) {
+                        ntp = ItemType.FURNACE;
+                        mtx[4] = ItemUtil.air;
+                    } else if (ItemType.FURNACE.equals(tp)) {
+                        ntp = ItemType.SMOKER;
+                        mtx[4] = ItemUtil.air;
+                    } else if (ItemType.SMOKER.equals(tp)) {
+                        ntp = ItemType.BLAST_FURNACE;
+                        mtx[4] = ItemUtil.air;
+                    } else if (ItemType.BLAST_FURNACE.equals(tp)) {
+                        ntp = ItemType.CAMPFIRE;
+                        mtx[4] = ItemUtil.air;
+                    } else if (ItemType.CAMPFIRE.equals(tp)) {
+                        ntp = ItemType.SMITHING_TABLE;
+                        mtx[1] = ItemUtil.air;
+                        mtx[3] = ItemUtil.air;
+                        mtx[5] = ItemUtil.air;
+                    } else if (ItemType.SMITHING_TABLE.equals(tp)) {
+                        ntp = ItemType.STONECUTTER;
+                        mtx[4] = ItemUtil.air;
+                    } else if (ItemType.STONECUTTER.equals(tp)) {
+                        ntp = ItemType.CHEST;
+                        Arrays.fill(mtx, ItemUtil.air);
+                    } else {//if ItemType.CHEST.equals(tp)
+                        ntp = ItemType.ENDER_CHEST;
+                        Arrays.fill(mtx, ItemUtil.air);
+                    }
+                    pl.closeInventory();
+                    openEditor(pl, key, ntp, rst, mtx);
+                    return true;
+                default: return true;
+            }
         } else return false;
 
-        final ItemStack rst = inv.getItem(RES_SLOT);
         if (ItemUtil.isBlank(rst, false)) {
             pl.sendMessage("§cFinish the recipe first!");
             return true;
@@ -675,9 +715,6 @@ public final class Crafts implements Listener {
         final YamlConfiguration crCfg = YamlConfiguration.loadConfiguration(DEF_FILE.toFile());
         crCfg.set(key, null);
         crCfg.set(key + ".result", ItemUtil.write(rst));
-        final ItemStack tis = inv.getItem(TYPE_SLOT);
-        final ItemType tp = tis == null
-            ? ItemType.CHEST : tis.getType().asItemType();
         crCfg.set(key + ".type", getRecType(tp));
         final ConfigurationSection cs = crCfg.getConfigurationSection(key);
         final NamespacedKey nKey = new NamespacedKey(IStrap.space, key);
@@ -693,7 +730,7 @@ public final class Crafts implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new FurnaceRecipe(nKey, rst, IdChoice.of(it), 0.5f, 200);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc);
+            Bukkit.addRecipe(nrc, true);
         } else if (ItemType.SMOKER.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -703,7 +740,7 @@ public final class Crafts implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new SmokingRecipe(nKey, rst, IdChoice.of(it), 0.5f, 100);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc);
+            Bukkit.addRecipe(nrc, true);
         } else if (ItemType.BLAST_FURNACE.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -713,7 +750,7 @@ public final class Crafts implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new BlastingRecipe(nKey, rst, IdChoice.of(it), 0.5f, 100);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc);
+            Bukkit.addRecipe(nrc, true);
         } else if (ItemType.CAMPFIRE.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -723,7 +760,7 @@ public final class Crafts implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new CampfireRecipe(nKey, rst, IdChoice.of(it), 0.5f, 500);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc);
+            Bukkit.addRecipe(nrc, true);
         } else if (ItemType.SMITHING_TABLE.equals(tp)) {
             it = inv.getItem(10);
             final ItemStack scd = inv.getItem(12);
@@ -738,7 +775,7 @@ public final class Crafts implements Listener {
             nrc = new SmithingTransformRecipe(nKey, rst, IdChoice.of(tpl), IdChoice.of(it),
                 IdChoice.of(scd), !it.hasData(DataComponentTypes.DAMAGE));
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc);
+            Bukkit.addRecipe(nrc, true);
         } else if (ItemType.STONECUTTER.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -748,7 +785,7 @@ public final class Crafts implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new StonecuttingRecipe(nKey, rst, IdChoice.of(it));
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc);
+            Bukkit.addRecipe(nrc, true);
         } else if (ItemType.ENDER_CHEST.equals(tp)) {
             final ShapelessRecipe lrs = new ShapelessRecipe(nKey, rst);
             shp = new String[]{"abc", "def", "ghi"};
@@ -763,7 +800,7 @@ public final class Crafts implements Listener {
             }
             nrc = lrs;
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc);
+            Bukkit.addRecipe(nrc, true);
         } else {//if ItemType.CHEST.equals(tp) - тоже магия
             final ShapedRecipe srs = new ShapedRecipe(nKey, rst);
             final ItemStack[] rcs = new ItemStack[rad * rad];
@@ -803,10 +840,10 @@ public final class Crafts implements Listener {
             }
             nrc = srs;
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(srs);
+            Bukkit.addRecipe(srs, true);
         }
 
-        Crafts.crafts.put(nKey, new Craft(nrc, p -> true));
+        CraftManager.crafts.put(nKey, new Craft(nrc, p -> true));
 
         try {
             crCfg.save(DEF_FILE.toFile());
@@ -828,7 +865,7 @@ public final class Crafts implements Listener {
         return sp;
     }
 
-    private static  ItemStack makeIcon(final ItemType mt) {
+    private static ItemStack makeIcon(final ItemType mt) {
         if (ItemType.ENDER_CHEST.equals(mt)) return new ItemBuilder(ItemType.ENDER_CHEST).name("§5Formless").build();
         if (ItemType.FURNACE.equals(mt)) return new ItemBuilder(ItemType.FURNACE).name("§6Furnace").build();
         if (ItemType.SMOKER.equals(mt)) return new ItemBuilder(ItemType.SMOKER).name("§cSmoking").build();
@@ -839,7 +876,7 @@ public final class Crafts implements Listener {
         /*if ItemType.CHEST.equals(tp)*/ return new ItemBuilder(ItemType.CHEST).name("§dShaped").build();
     }
 
-    private static  String getRecType(final ItemType tp) {
+    private static String getRecType(final ItemType tp) {
         if (ItemType.ENDER_CHEST.equals(tp)) return "noshape";
         if (ItemType.FURNACE.equals(tp)) return "furnace";
         if (ItemType.SMOKER.equals(tp)) return "smoker";

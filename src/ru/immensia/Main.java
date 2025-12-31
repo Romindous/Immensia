@@ -14,6 +14,7 @@ import ru.immensia.boot.Registries;
 import ru.immensia.entities.EntityManager;
 import ru.immensia.entities.Mobs;
 import ru.immensia.entities.PvPManager;
+import ru.immensia.items.crafts.CraftManager;
 import ru.immensia.objects.IConfigManager;
 import ru.immensia.utils.strings.TCUtil;
 
@@ -60,6 +61,7 @@ public class Main extends JavaPlugin {
 		
 		getServer().getPluginManager().registerEvents(new MainLis(), this);
 
+        new CraftManager();
         new PvPManager();
         new EntityManager();
 

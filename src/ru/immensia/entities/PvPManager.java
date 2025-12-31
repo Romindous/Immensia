@@ -183,11 +183,11 @@ public class PvPManager implements Listener {
 
         if (target instanceof Mob || target instanceof ArmorStand) {// # v M
             final ItemStack shd = target.getEquipment().getItemInOffHand();
-            if (ItemUtil.is(shd, ItemType.SHIELD)) {
+            final boolean shielded = ItemUtil.is(shd, ItemType.SHIELD);
+            if (shielded) {
                 target.getWorld().playSound(target.getLocation(),
                     Sound.ITEM_SHIELD_BLOCK, 1f, 0.6f);
                 e.setDamage(e.getDamage() * 0.6d);
-                return;
             }
 
             if (damager instanceof final Player dmgrPl) {// P v M
@@ -204,7 +204,7 @@ public class PvPManager implements Listener {
                 Main.sync(() -> EntityUtil.indicate(target.getEyeLocation(), (e.isCritical() ? "<red>✘" : "<gold>")
                     + StringUtil.toSigFigs(e.getFinalDamage(), (byte) 1), dmgrPl), 1);
 
-                if (dmgrPl.getAttackCooldown() != 1f || !dmgrPl.isSprinting()
+                if (shielded || dmgrPl.getAttackCooldown() != 1f || !dmgrPl.isSprinting()
                     || !DUAL_HIT.contains(hand.getType().asItemType())) return;
 
                 final ItemStack ofh = inv.getItemInOffHand();

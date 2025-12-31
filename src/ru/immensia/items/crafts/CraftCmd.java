@@ -9,7 +9,6 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Recipe;
 import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.cmds.OCmdBuilder;
@@ -29,7 +28,7 @@ public class CraftCmd {
                 if (!cntx.getSource().getSender().isOp()) {
                     return Set.of();
                 }
-                return Crafts.crafts.keySet().stream()
+                return CraftManager.crafts.keySet().stream()
                     .map(NamespacedKey::getKey).collect(Collectors.toSet());
             }, false).run(cntx -> {
                 final CommandSender cs = cntx.getSource().getSender();
@@ -47,12 +46,8 @@ public class CraftCmd {
                         }
 
                         nm = Resolver.string(cntx, name);
-                        final Recipe rec = Bukkit.getRecipe(IStrap.key(nm));
-                        if (rec == null) {
-                            pl.sendMessage("§cThere's no such recipe!");
-                            yield 0;
-                        }
-                        Crafts.openEditor(pl, nm, rec);
+                        final CraftManager.Craft cr = CraftManager.crafts.get(IStrap.key(nm));
+                        CraftManager.openEditor(pl, nm, cr == null ? null : cr.rec());
                         yield Command.SINGLE_SUCCESS;
                     }
                     case "remove" -> {
@@ -62,17 +57,17 @@ public class CraftCmd {
                         }
 
                         nm = Resolver.string(cntx, name);
-                        final YamlConfiguration craftConfig = YamlConfiguration.loadConfiguration(Crafts.DEF_FILE.toFile());
+                        final YamlConfiguration craftConfig = YamlConfiguration.loadConfiguration(CraftManager.DEF_FILE.toFile());
                         if (!craftConfig.getKeys(false).contains(nm)) {
                             pl.sendMessage("§cThere's no such recipe!");
                             yield 0;
                         }
                         craftConfig.set(nm, null);
-                        Bukkit.removeRecipe(new NamespacedKey(IStrap.space, nm));
-                        Crafts.rmvRecipe(new NamespacedKey(IStrap.space, nm));
+                        Bukkit.removeRecipe(IStrap.key(nm));
+                        CraftManager.rmvRecipe(IStrap.key(nm));
                         pl.sendMessage("§7Recipe §e" + nm + " §7is removed!");
                         try {
-                            craftConfig.save(Crafts.DEF_FILE.toFile());
+                            craftConfig.save(CraftManager.DEF_FILE.toFile());
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
