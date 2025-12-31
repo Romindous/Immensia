@@ -9,6 +9,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
 import org.bukkit.damage.DamageType;
 import org.bukkit.entity.*;
 import org.bukkit.event.entity.*;
@@ -26,6 +28,7 @@ import ru.immensia.utils.locs.AreaSpawner;
 import ru.immensia.utils.locs.BVec;
 import ru.immensia.utils.locs.LocFinder;
 import ru.immensia.utils.locs.LocUtil;
+import ru.immensia.utils.strings.TCUtil;
 
 public class WitherBoss extends CustomEntity {
 
@@ -121,6 +124,14 @@ public class WitherBoss extends CustomEntity {
                 return TYPES;
             }
         });
+        setCustoms(mb);
+    }
+
+    private static void setCustoms(final Wither mb) {
+        mb.customName(TCUtil.form("§8§lThe Withering Remnant"));
+        mb.getBossBar().setTitle("§8§lThe Withering Remnant");
+        mb.getBossBar().setStyle(BarStyle.SEGMENTED_6);
+        mb.getBossBar().setColor(BarColor.WHITE);
     }
 
     public static final PotionEffect INF_EFF = new PotionEffect(PotionEffectType.INFESTED,
@@ -157,7 +168,7 @@ public class WitherBoss extends CustomEntity {
             EntityUtil.effect(ws, Sound.ENTITY_WITHER_SKELETON_DEATH,
                 1.4f, Particle.LARGE_SMOKE);
             if (!dmgr.isInvulnerable()) ws.setTarget(dmgr);
-            if (!mb.isCharged()) continue;
+            if (!mb.isCharged() && Main.srnd.nextBoolean()) continue;
             final EntityEquipment eq = ws.getEquipment();
             eq.setItemInMainHand(ItemType.BOW.createItemStack());
             eq.setItemInMainHandDropChance(0f);

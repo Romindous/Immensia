@@ -115,11 +115,11 @@ public class DragonBoss extends CustomEntity {
         final DragonBattle db = drg.getDragonBattle();
         if (db == null) return;
         setCustoms(drg, db);
+        final Location loc = drg.getLocation();
         switch (e.getNewPhase()) {
             case LEAVE_PORTAL:
-                final Location loc = drg.getLocation();
                 int chlds = LocUtil.getChEnts(BVec.of(loc), CHLD_DST,
-                    EnderDragon.class, null).size();
+                    Phantom.class, null).size();
                 for (; chlds < MAX_CHLDS; chlds++) spawnChild(loc);
                 break;
             case FLY_TO_PORTAL, BREATH_ATTACK:
@@ -134,7 +134,7 @@ public class DragonBoss extends CustomEntity {
                     plc.getWorld().spawn(plc, EnderCrystal.class).setShowingBottom(true);
                 break;
             case DYING:
-                for (final Phantom ph : LocUtil.getChEnts(BVec.of(drg.getLocation()),
+                for (final Phantom ph : LocUtil.getChEnts(BVec.of(loc),
                     CHLD_DST, Phantom.class, null)) {
                     EntityUtil.effect(ph, Sound.ENTITY_PHANTOM_HURT, 0.6f, Particle.CLOUD);
                     ph.remove();
@@ -144,25 +144,25 @@ public class DragonBoss extends CustomEntity {
     }
 
     private static void setCustoms(final EnderDragon drg, final DragonBattle db) {
-        drg.customName(TCUtil.form("§5§lМать Драконья"));
-        db.getBossBar().setTitle("§5§lМать Драконья");
+        drg.customName(TCUtil.form("§5§lThe Dragon Mother"));
+        db.getBossBar().setTitle("§5§lThe Dragon Mother");
         db.getBossBar().setStyle(BarStyle.SEGMENTED_12);
     }
 
-    private static final double CHLD_SIZE = 1.6d;
-    private static final double CHLD_SPEED = 1.6d;
+    private static final double CHLD_SIZE = 0.8d;
+    private static final double CHLD_SPEED = 2.0d;
     private static final double CHLD_DMG = 1d;
     private static final double CHLD_KB = 2d;
 
     public static Phantom spawnChild(final Location loc) {
         final Phantom ch = loc.getWorld().spawn(loc.clone().add(NumUtil.rndSignNum(1, 2),
                 Main.srnd.nextInt(8), NumUtil.rndSignNum(1, 2)), Phantom.class,
-            CreatureSpawnEvent.SpawnReason.BREEDING, false, ph -> {
-                attriMul(ph, Attribute.SCALE, CHLD_SIZE);
+            CreatureSpawnEvent.SpawnReason.SPELL, false, ph -> {
+                attriMul(ph, Attribute.SCALE, CHLD_SIZE + Main.srnd.nextFloat() - 0.5d);
                 attriMul(ph, Attribute.FLYING_SPEED, CHLD_SPEED);
                 attriMul(ph, Attribute.ATTACK_KNOCKBACK, CHLD_KB);
                 attriMul(ph, Attribute.ATTACK_DAMAGE, CHLD_DMG);
-                ph.setInvisible(true);
+//                ph.setInvisible(true);
             });
         EntityUtil.effect(ch, Sound.ENTITY_PHANTOM_AMBIENT,
             0.8f, Particle.SQUID_INK);
