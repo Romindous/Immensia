@@ -52,7 +52,7 @@ public class Main extends JavaPlugin {
 		TCUtil.P = "<yellow>";
 		TCUtil.A = "<dark_green>";
 
-		PREFIX = TCUtil.N + "["+ TCUtil.P + "DA" + TCUtil.N + "] ";
+		PREFIX = TCUtil.N + "["+ TCUtil.P + "Ims" + TCUtil.N + "] ";
 		mobs = new Mobs();
 //		relics = new Relics();
 		world = Bukkit.getWorlds().getFirst();

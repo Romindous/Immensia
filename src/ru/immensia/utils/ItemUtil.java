@@ -908,7 +908,7 @@ public class ItemUtil {
             }
             case REDSTONE -> {//more bulk, less kick
                 if (atr.equals(MAX_HEALTH)) return 0.1d;
-                else if (atr.equals(SCALE)) return 0.1d;
+                else if (atr.equals(ATTACK_SPEED)) return 0.1d;
                 else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return -0.1d;
                 else if (atr.equals(JUMP_STRENGTH)) return -0.1d;
             }
@@ -929,6 +929,12 @@ public class ItemUtil {
                 else if (atr.equals(ARMOR_TOUGHNESS)) return -0.1d;
                 else if (atr.equals(ATTACK_SPEED)) return -0.1d;
                 else if (atr.equals(SNEAKING_SPEED)) return -0.1d;
+            }
+            case RESIN_CLUMP -> {//less health, less fall dmg and kb
+                if (atr.equals(FALL_DAMAGE_MULTIPLIER)) return -0.2d;
+                else if (atr.equals(ATTACK_KNOCKBACK)) return -0.1d;
+                else if (atr.equals(BURNING_TIME)) return 0.1d;
+                else if (atr.equals(MAX_HEALTH)) return -0.1d;
             }
         }
         return 0d;

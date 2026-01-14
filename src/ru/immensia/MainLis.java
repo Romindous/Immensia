@@ -4,6 +4,7 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.UUID;
 import com.destroystokyo.paper.ParticleBuilder;
 import com.destroystokyo.paper.entity.villager.Reputation;
@@ -22,12 +23,14 @@ import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.block.data.Ageable;
+import org.bukkit.damage.DamageType;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.event.Event.Result;
@@ -38,26 +41,31 @@ import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.inventory.PrepareGrindstoneEvent;
+import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import ru.immensia.boot.IStrap;
 import ru.immensia.entities.mobs.DragonBoss;
+import ru.immensia.items.ItemBuilder;
 import ru.immensia.items.SpecialItem;
 import ru.immensia.items.crafts.CraftManager;
 import ru.immensia.utils.BlockUtil;
-import ru.immensia.utils.ItemUtil;
+import ru.immensia.utils.ClassUtil;
 import ru.immensia.utils.EntityUtil;
-import ru.immensia.utils.strings.TCUtil;
+import ru.immensia.utils.ItemUtil;
 import ru.immensia.utils.locs.BVec;
 import ru.immensia.utils.locs.LocUtil;
+import ru.immensia.utils.strings.TCUtil;
 import ru.immensia.utils.versions.Nms;
 
 public class MainLis implements Listener {
@@ -177,41 +185,57 @@ public class MainLis implements Listener {
         }
     }
 
-
+    private static final Set<DamageType> TICKED = Set.of(DamageType.ON_FIRE,
+        DamageType.FREEZE, DamageType.WITHER, DamageType.INDIRECT_MAGIC);
     @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
     public void onDth(final EntityDeathEvent e) {
         if (!(e.getEntity() instanceof final Mob mb)) return;
         if (mb.getCanPickupItems()) return;
 
-        final LivingEntity klr = EntityUtil.lastDamager(mb, true);
+        LivingEntity klr = EntityUtil.lastDamager(mb, true);
         if (klr == null) {
-            e.getDrops().clear();
-            e.setDroppedExp(0);
-            return;
+            final EntityDamageEvent lde = mb.getLastDamageCause();
+            if (lde == null || !TICKED.contains(lde.getDamageSource().getDamageType())) {
+                e.getDrops().clear();
+                e.setDroppedExp(0);
+                return;
+            }
+            final Player kpl = mb.getKiller();
+            final LivingEntity tgt = mb.getTarget();
+            klr = kpl != null && tgt instanceof final Player tpl
+                && tpl.getEntityId() == kpl.getEntityId() ? tpl : null;
+            if (klr == null) {
+                e.getDrops().clear();
+                e.setDroppedExp(0);
+                return;
+            }
         }
 
         switch (klr.getType()) {
             case FROG, CREEPER, WITHER, SKELETON, STRAY, PARCHED, BOGGED:
                 break;
             case PLAYER:
-                switch (e.getEntityType()) {
+                /*switch (mb.getType()) {
                     case ENDERMAN, ZOMBIFIED_PIGLIN, CAVE_SPIDER, SILVERFISH:
-                        e.setDroppedExp(1);
+                        e.setDroppedExp(0);
                         break;
                     default:
-                        if (mb instanceof Raider && ((Raider) mb).isPatrolLeader()) {
-                            if (klr instanceof Player) {
-                                final Advancement adv = Bukkit.getAdvancement(NamespacedKey.minecraft("adventure/voluntary_exile"));
-                                if (adv == null)
-                                    Main.log_warn("Incorrect advancement " + Key.key("adventure/voluntary_exile").asMinimalString());
-                                else {
-                                    final AdvancementProgress adp = ((Player) klr).getAdvancementProgress(adv);
-                                    for (final String cr : adv.getCriteria()) adp.awardCriteria(cr);
-                                }
-                            }
-                        }
                         break;
+                }*/
+                if (mb instanceof Raider && ((Raider) mb).isPatrolLeader()) {
+                    if (klr instanceof Player) {
+                        final Advancement adv = Bukkit.getAdvancement(NamespacedKey.minecraft("adventure/voluntary_exile"));
+                        if (adv == null)
+                            Main.log_warn("Incorrect advancement " + Key.key("adventure/voluntary_exile").asMinimalString());
+                        else {
+                            final AdvancementProgress adp = ((Player) klr).getAdvancementProgress(adv);
+                            for (final String cr : adv.getCriteria()) adp.awardCriteria(cr);
+                        }
+                    }
                 }
+                final AttributeInstance hp = mb.getAttribute(Attribute.MAX_HEALTH);
+                if (hp == null) break;
+                e.setDroppedExp((int) (e.getDroppedExp() * hp.getValue() / hp.getBaseValue()));
                 break;
             default:
                 e.getDrops().clear();
@@ -324,13 +348,13 @@ public class MainLis implements Listener {
         final ItemStack upi = ginv.getUpperItem();
         final ItemStack lwi = ginv.getLowerItem();
         if (ItemUtil.is(upi, BOOK_TYPE)) {//up is book
-            if (!hasEnchs(lwi)) return;
+            if (!canStrip(lwi)) return;
             final ItemStack ri = ENCH_TYPE.createItemStack();
             ri.setData(DataComponentTypes.STORED_ENCHANTMENTS,
                 lwi.getData(DataComponentTypes.ENCHANTMENTS));
             e.setResult(ri);
         } else if (ItemUtil.is(lwi, BOOK_TYPE)) {//down is book
-            if (!hasEnchs(upi)) return;
+            if (!canStrip(upi)) return;
             final ItemStack ri = ENCH_TYPE.createItemStack();
             ri.setData(DataComponentTypes.STORED_ENCHANTMENTS,
                 upi.getData(DataComponentTypes.ENCHANTMENTS));
@@ -338,33 +362,30 @@ public class MainLis implements Listener {
         }
     }
 
-    private static boolean isGrindable(final ItemStack it) {
-        if (ItemUtil.isBlank(it, false)) return false;
-        return it.hasData(DataComponentTypes.MAX_DAMAGE) || hasEnchs(it);
-    }
-
-    private static boolean hasEnchs(final ItemStack it) {
+    private static boolean canStrip(final ItemStack it) {
         if (ItemUtil.isBlank(it, false)) return false;
         final ItemEnchantments ies = it.getData(DataComponentTypes.ENCHANTMENTS);
-        return ies != null && !ies.enchantments().isEmpty();
+        return ies != null && !ies.enchantments().isEmpty()
+            && Integer.valueOf(0).equals(it.getData(DataComponentTypes.DAMAGE));
     }
 
+    private static final int OMEN_TIME = 1000;
     @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGHEST)
     public void onIntr(final PlayerInteractEvent e) {
-        final InventoryView iv = e.getPlayer().getOpenInventory();
-        if (iv.getType() == InventoryType.SHULKER_BOX) {
-            e.setCancelled(true);
-            e.setUseInteractedBlock(Result.DENY);
-            e.setUseItemInHand(Result.DENY);
-            return;
-        }
-
         final Player p = e.getPlayer();
         switch (e.getAction()) {
             case RIGHT_CLICK_AIR, RIGHT_CLICK_BLOCK:
                 final ItemStack it = e.getItem();
                 if (ItemUtil.isBlank(it, false)) break;
                 switch (it.getType()) {
+                    case GOAT_HORN:
+                        if (p.hasCooldown(it)) break;
+                        final PotionEffect oml = p.getPotionEffect(PotionEffectType.BAD_OMEN);
+                        p.removePotionEffect(PotionEffectType.BAD_OMEN);
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.BAD_OMEN, 1000,
+                            oml == null ? 0 : oml.getAmplifier() + 1, true, true, true));
+                        p.getInventory().setItem(e.getHand(), it.subtract());
+                        break;
                     case DIAMOND_HOE, IRON_HOE, WOODEN_HOE,
                          GOLDEN_HOE, NETHERITE_HOE, STONE_HOE:
                         final Block b = e.getClickedBlock();
@@ -412,26 +433,30 @@ public class MainLis implements Listener {
         }
     }
 
-    private static final int SPAWN_DST = 120, DST_DEL = 20;
+    private static final int SPAWN_DST = 120, DST_DEL = 8;
 
     @EventHandler
     public void onSpawn(final CreatureSpawnEvent e) {
         final LivingEntity cr = e.getEntity();
         final EntityEquipment eq = cr.getEquipment();
         if (!(cr instanceof Mob)) return;
-        if (e.getSpawnReason() == SpawnReason.SPELL) return;
+        switch (e.getSpawnReason()) {
+            case SPELL, SPAWNER, TRIAL_SPAWNER: return;
+        }
         for (final EquipmentSlot es : EquipmentSlot.values()) {
             eq.setItem(es, Main.air);
             eq.setDropChance(es, 0.1f);
         }
 
         final BVec loc = BVec.of(e.getLocation());
-        final int dstSq = loc.distSq(cr.getWorld().getSpawnLocation()) >> DST_DEL;
+        final int dstSq = loc.distAbs(cr.getWorld().getSpawnLocation()) >> (DST_DEL
+            - (cr.getWorld().getEnvironment() == World.Environment.NETHER ? 3 : 0));
         final Player near = LocUtil.getClsChEnt(loc, SPAWN_DST, Player.class, null);
         if (near == null) {
             cr.remove();
             return;
         }
+//        near.sendMessage("d=" + dstSq + " w=" + (dstSq >> WEAR_DEL));
         final boolean inVeh = cr.isInsideVehicle() || Main.srnd.nextBoolean();
         switch (cr.getType()) {
             case WARDEN:
@@ -476,7 +501,7 @@ public class MainLis implements Listener {
             case PILLAGER:
                 cr.getEquipment().setItemInMainHand(ItemType.CROSSBOW.createItemStack());
                 break;
-            case AXOLOTL, BLAZE, CAVE_SPIDER, CREEPER, ELDER_GUARDIAN,
+            case AXOLOTL, BLAZE, BREEZE, CAVE_SPIDER, CREEPER, ELDER_GUARDIAN,
                  ENDERMITE, EVOKER, GHAST, GUARDIAN, HOGLIN, IRON_GOLEM, MAGMA_CUBE,
                  POLAR_BEAR, RAVAGER, SHULKER, SILVERFISH, SKELETON_HORSE, CAMEL_HUSK,
                  SLIME, SNOW_GOLEM, SPIDER, WITCH, WOLF, ZOGLIN, ZOMBIE_HORSE:
@@ -495,6 +520,10 @@ public class MainLis implements Listener {
                     new ItemType[] {ItemType.GOLDEN_BOOTS, ItemType.LEATHER_LEGGINGS, ItemType.GOLDEN_CHESTPLATE, ItemType.LEATHER_HELMET, ItemType.GOLDEN_SWORD, ItemType.GOLDEN_SPEAR},
                     new ItemType[] {ItemType.GOLDEN_BOOTS, ItemType.GOLDEN_LEGGINGS, ItemType.GOLDEN_CHESTPLATE, ItemType.GOLDEN_HELMET, ItemType.NETHERITE_SWORD, ItemType.GOLDEN_SPEAR, ItemType.SHIELD},
                     new ItemType[] {ItemType.NETHERITE_BOOTS, ItemType.GOLDEN_LEGGINGS, ItemType.NETHERITE_CHESTPLATE, ItemType.GOLDEN_HELMET, ItemType.NETHERITE_AXE, ItemType.NETHERITE_SPEAR, ItemType.SHIELD});
+                break;
+            case HAPPY_GHAST:
+                modGhast((HappyGhast) cr);
+                return;
             case ENDERMAN:
                 cr.setCanPickupItems(false);
                 if (e.getSpawnReason() != SpawnReason.NATURAL) break;
@@ -519,23 +548,69 @@ public class MainLis implements Listener {
 
         final AttributeInstance hp = cr.getAttribute(Attribute.MAX_HEALTH);
         if (hp != null) {
-            hp.setBaseValue(hp.getBaseValue() * (0.1d * dstSq + 1d));
+            hp.addModifier(new AttributeModifier(IStrap.key("hp_buff"),
+                0.1d * dstSq, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
             cr.setHealth(hp.getValue());
         }
         final AttributeInstance dmg = cr.getAttribute(Attribute.ATTACK_DAMAGE);
-        if (dmg != null) dmg.setBaseValue(dmg.getBaseValue() * (0.04d * dstSq + 1d));
+        if (dmg != null) dmg.setBaseValue(dmg.getBaseValue() * (0.06d * dstSq + 1d));
         final AttributeInstance spd = cr.getAttribute(Attribute.MOVEMENT_SPEED);
         if (spd != null) spd.setBaseValue(spd.getBaseValue() * (0.01d * dstSq + 1d));
         final AttributeInstance flw = cr.getAttribute(Attribute.FOLLOW_RANGE);
         if (flw != null) flw.setBaseValue(flw.getBaseValue() * (0.1d * dstSq + 1d));
         final AttributeInstance wtr = cr.getAttribute(Attribute.WATER_MOVEMENT_EFFICIENCY);
-        if (wtr != null) wtr.setBaseValue(wtr.getBaseValue() * (0.02d * dstSq + 1d));
+        if (wtr != null) wtr.setBaseValue(wtr.getBaseValue() * (0.1d * dstSq + 1d));
         final AttributeInstance scl = cr.getAttribute(Attribute.SCALE);
         if (scl != null) scl.setBaseValue(scl.getBaseValue()
-            * (0.02d * dstSq - 0.1d) * Main.srnd.nextFloat() + 1d);
+            * (0.01d * dstSq - 0.1d) * Main.srnd.nextFloat() + 1d);
     }
 
-    private static final int chSt = 10;
+    private void modGhast(final HappyGhast gh) {
+        final AttributeInstance spd = gh.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (spd != null) spd.setBaseValue(spd.getBaseValue() * 1.4d);
+        final AttributeInstance fly = gh.getAttribute(Attribute.FLYING_SPEED);
+        if (fly != null) fly.setBaseValue(fly.getBaseValue() * 1.4d);
+        final AttributeInstance eff = gh.getAttribute(Attribute.MOVEMENT_EFFICIENCY);
+        if (eff != null) eff.setBaseValue(eff.getBaseValue() * 1.4d);
+    }
+
+    private static final Enchantment[] WEAPON = {Enchantment.FLAME, Enchantment.POWER, Enchantment.PUNCH,
+            Enchantment.KNOCKBACK, Enchantment.SHARPNESS, Enchantment.UNBREAKING, Enchantment.FIRE_ASPECT},
+        ARMOR = {Enchantment.UNBREAKING, Enchantment.PROTECTION, Enchantment.THORNS,
+            Enchantment.PROJECTILE_PROTECTION, Enchantment.DEPTH_STRIDER};
+
+    private static final int WEAR_DEL = 1;
+    private static void wearChance(final LivingEntity le, final int dstSq, final ItemType[]... mts) {
+        final int wear = dstSq >> WEAR_DEL;
+        if (wear == 0) return;
+        final EntityEquipment eq = le.getEquipment();
+        for (final ItemType mt : mts[Math.min(mts.length - 1, Main.srnd.nextInt(wear))]) {
+            if (Main.srnd.nextBoolean()) continue;
+            final Equippable es = mt.getDefaultData(DataComponentTypes.EQUIPPABLE);
+            final EquipmentSlot slot = es == null ? EquipmentSlot.HAND : es.slot();
+            eq.setItem(slot, enchanted(mt, slot, wear), false);
+        }
+    }
+
+    private static final int ENCH_DEL = 1;
+    private static ItemStack enchanted(final ItemType mt, final EquipmentSlot slot, final int wear) {
+        final ItemStack it = mt.createItemStack();
+        final Enchantment[] enchs;
+        if (slot.isHand()) enchs = WEAPON;
+        else if (slot.isArmor()) enchs = ARMOR;
+        else return it;
+        final int ench = wear >> ENCH_DEL;
+        if (ench == 0) return it;
+        ClassUtil.shuffle(enchs);
+        final ItemBuilder ib = new ItemBuilder(it);
+        for (int i = Math.min(ench, enchs.length - 1) - 1; i >= 0; i--) {
+            if (Main.srnd.nextBoolean() || !enchs[i].canEnchantItem(it)) continue;
+            ib.enchant(enchs[i], Main.srnd.nextInt(ench) + 1);
+        }
+        return ib.build();
+    }
+
+    /*private static final int chSt = 10;
     private void wearChance(final LivingEntity le, final int dstSq, final ItemType[]... mts) {
         if (dstSq == 0) return;
         for (int i = mts.length - 1; i >= 0; i--) {
@@ -548,13 +623,21 @@ public class MainLis implements Listener {
             }
             return;
         }
+    }*/
+
+    @EventHandler
+    public void onSleep(final PlayerBedEnterEvent e) {
+        final Player pl = e.getPlayer();
+        if (((pl.getWorld().getFullTime() / 24000l) & 3) == 0) {
+            pl.sendMessage(TCUtil.form(Main.PREFIX + "<red>You can't sleep every 4th night!"));
+            e.setUseBed(Result.DENY);
+        }
     }
 
     @EventHandler
     public void onDragon(final EnderDragonChangePhaseEvent e) {
         DragonBoss.onStage(e);
     }
-
 
     public static final double VEL_MUL = 0.025d;
     public static final double POP_MUL = 0.4d;
