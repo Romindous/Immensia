@@ -930,7 +930,7 @@ public class ItemUtil {
                 else if (atr.equals(ATTACK_SPEED)) return -0.1d;
                 else if (atr.equals(SNEAKING_SPEED)) return -0.1d;
             }
-            case RESIN_CLUMP -> {//less health, less fall dmg and kb
+            case RESIN_BRICK -> {//less health, less fall dmg and kb
                 if (atr.equals(FALL_DAMAGE_MULTIPLIER)) return -0.2d;
                 else if (atr.equals(ATTACK_KNOCKBACK)) return -0.1d;
                 else if (atr.equals(BURNING_TIME)) return 0.1d;
