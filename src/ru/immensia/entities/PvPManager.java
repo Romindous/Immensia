@@ -1,12 +1,12 @@
 package ru.immensia.entities;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import com.google.common.collect.Multimap;
 import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.BlocksAttacks;
-import io.papermc.paper.datacomponent.item.Weapon;
+import io.papermc.paper.datacomponent.item.*;
 import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
 import io.papermc.paper.event.player.PlayerShieldDisableEvent;
 import io.papermc.paper.registry.RegistryKey;
@@ -25,8 +25,10 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityResurrectEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.PrepareSmithingEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.*;
@@ -35,8 +37,8 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
-import ru.immensia.utils.ItemUtil;
 import ru.immensia.utils.EntityUtil;
+import ru.immensia.utils.ItemUtil;
 import ru.immensia.utils.strings.StringUtil;
 import ru.immensia.utils.versions.Nms;
 
@@ -61,7 +63,7 @@ public class PvPManager implements Listener {
     public static final List<DamageReduction> BLOCK_REDS = ItemType.SHIELD
         .getDefaultData(DataComponentTypes.BLOCKS_ATTACKS).damageReductions();
     public static final DamageReduction DMG_RED = DamageReduction.damageReduction().type(IStrap.regSetOf(Arrays.asList(DamageTypeKeys.MACE_SMASH,
-            DamageTypeKeys.MOB_ATTACK, DamageTypeKeys.MOB_ATTACK_NO_AGGRO, DamageTypeKeys.MOB_PROJECTILE, DamageTypeKeys.PLAYER_ATTACK,
+            DamageTypeKeys.MOB_ATTACK, DamageTypeKeys.MOB_ATTACK_NO_AGGRO, DamageTypeKeys.MOB_PROJECTILE, DamageTypeKeys.PLAYER_ATTACK, DamageTypeKeys.SPEAR,
             DamageTypeKeys.THROWN, DamageTypeKeys.ARROW, DamageTypeKeys.WITHER_SKULL, DamageTypeKeys.WIND_CHARGE), RegistryKey.DAMAGE_TYPE))
         .horizontalBlockingAngle(60).factor(1f).build();
     public static final BlocksAttacks MELEE_BLOCK = BlocksAttacks.blocksAttacks().blockDelaySeconds(0f)
@@ -74,6 +76,9 @@ public class PvPManager implements Listener {
 
     public static final int DHIT_CLD = 4;
     public static final int BLCK_CLD = 0;
+    private static final int HIT_DUR = 8;
+    private static final float MIN_REACH = 0f;
+    private static final int SPEAR_DELAY = 4;
 
     public PvPManager() {
         reload();
@@ -421,4 +426,55 @@ public class PvPManager implements Listener {
             e.setCancelled(false);
         }
     }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public static void onGet(final InventoryClickEvent e) {
+        final Inventory inv = e.getClickedInventory();
+        if (inv == null || inv.getType() != e.getView().getTopInventory().getType()) return;
+        final ItemStack it = updatePvPItem(e.getCurrentItem());
+        if (it != null) e.setCurrentItem(it);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public static void onGet(final EntityPickupItemEvent e) {
+        final Item item = e.getItem();
+        final ItemStack it = updatePvPItem(item.getItemStack());
+        if (it != null) item.setItemStack(it);
+    }
+
+    private static @Nullable ItemStack updatePvPItem(final ItemStack it) {
+        if (it == null) return null;
+        boolean change = false;
+        final SwingAnimation swa = it.getData(DataComponentTypes.SWING_ANIMATION);
+        final boolean isTr = ItemUtil.is(it, ItemType.TRIDENT);
+        if (swa != null) {
+            final SwingAnimation.Animation at = isTr ? SwingAnimation.Animation.STAB : swa.type();
+            it.setData(DataComponentTypes.SWING_ANIMATION, SwingAnimation.swingAnimation().type(at)
+                .duration(HIT_DUR << (at == SwingAnimation.Animation.STAB ? 1 : 0)).build());
+            change = true;
+        }
+        if (isTr) {
+            final AttackRange arg = ItemType.DIAMOND_SPEAR.getDefaultData(DataComponentTypes.ATTACK_RANGE);
+            it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange().hitboxMargin(arg.hitboxMargin())
+                .mobFactor(arg.mobFactor()).maxReach(arg.maxReach()).maxCreativeReach(arg.maxCreativeReach())
+                .minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
+            change = true;
+        }
+        final KineticWeapon kw = it.getData(DataComponentTypes.KINETIC_WEAPON);
+        if (kw != null) {
+            it.setData(DataComponentTypes.KINETIC_WEAPON, KineticWeapon.kineticWeapon().delayTicks(SPEAR_DELAY)
+                .damageConditions(kw.damageConditions()).dismountConditions(kw.damageConditions()).knockbackConditions(kw.knockbackConditions())
+                .forwardMovement(kw.forwardMovement()).damageMultiplier(kw.damageMultiplier()).sound(kw.sound()).hitSound(kw.hitSound()).build());
+            change = true;
+        }
+        final Weapon wpn = it.getData(DataComponentTypes.WEAPON);
+        if (wpn != null && wpn.disableBlockingForSeconds() != MELEE_BREAK_SEC) {
+            it.setData(DataComponentTypes.WEAPON, Weapon.weapon()
+                .itemDamagePerAttack(wpn.itemDamagePerAttack())
+                .disableBlockingForSeconds(MELEE_BREAK_SEC).build());
+            change = true;
+        }
+        return change ? it : null;
+    }
+
 }

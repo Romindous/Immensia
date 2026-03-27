@@ -106,60 +106,85 @@ public final class CraftManager implements Listener {
     public static void readCraft(final ConfigurationSection cs) {
         //ConfigurationSection cs = craftConfig.getConfigurationSection("crafts");
         final ItemStack resultItem = ItemUtil.parse(cs.getString("result"));
-        final NamespacedKey nsk = new NamespacedKey(IStrap.space, cs.getName());
-        //cs = craftConfig.getConfigurationSection("crafts." + c + ".recipe");
-        final Recipe recipe;
+        final NamespacedKey nsk = IStrap.key(cs.getName());
+
+        final Recipe recipeServer;
+        final Recipe recipeLocal;
         final ItemStack it;
         switch (cs.getString("type")) {//(craftConfig.getString("crafts." + c + ".type")) {
             case "smoker":
                 if (ItemUtil.isBlank((it = ItemUtil.parse(cs.getString("recipe.a"))), false)) return;
-                recipe = new SmokingRecipe(nsk, resultItem, IdChoice.of(it), 0.5f, 100);
+                recipeLocal = new SmokingRecipe(nsk, resultItem, typeChoiceOf(it), 0.5f, 100);
+                recipeServer = new SmokingRecipe(nsk, resultItem, typeChoiceOf(it), 0.5f, 100);
                 break;
             case "blaster":
                 if (ItemUtil.isBlank((it = ItemUtil.parse(cs.getString("recipe.a"))), false)) return;
-                recipe = new BlastingRecipe(nsk, resultItem, IdChoice.of(it), 0.5f, 100);
+                recipeLocal = new BlastingRecipe(nsk, resultItem, IdChoice.of(it), 0.5f, 100);
+                recipeServer = new BlastingRecipe(nsk, resultItem, typeChoiceOf(it), 0.5f, 100);
                 break;
             case "campfire":
                 if (ItemUtil.isBlank((it = ItemUtil.parse(cs.getString("recipe.a"))), false)) return;
-                recipe = new CampfireRecipe(nsk, resultItem, IdChoice.of(it), 0.5f, 500);
+                recipeLocal = new CampfireRecipe(nsk, resultItem, IdChoice.of(it), 0.5f, 500);
+                recipeServer = new CampfireRecipe(nsk, resultItem, typeChoiceOf(it), 0.5f, 500);
                 break;
             case "furnace":
                 if (ItemUtil.isBlank((it = ItemUtil.parse(cs.getString("recipe.a"))), false)) return;
-                recipe = new FurnaceRecipe(nsk, resultItem, IdChoice.of(it), 0.5f, 200);
+                recipeLocal = new FurnaceRecipe(nsk, resultItem, IdChoice.of(it), 0.5f, 200);
+                recipeServer = new FurnaceRecipe(nsk, resultItem, typeChoiceOf(it), 0.5f, 200);
                 break;
             case "cutter":
                 if (ItemUtil.isBlank((it = ItemUtil.parse(cs.getString("recipe.a"))), false)) return;
-                recipe = new StonecuttingRecipe(nsk, resultItem, IdChoice.of(it));
+                recipeLocal = new StonecuttingRecipe(nsk, resultItem, IdChoice.of(it));
+                recipeServer = new StonecuttingRecipe(nsk, resultItem, typeChoiceOf(it));
                 break;
             case "smith":
                 it = ItemUtil.parse(cs.getString("recipe.a"));
                 final ItemStack scd = ItemUtil.parse(cs.getString("recipe.b"));
                 if (ItemUtil.isBlank(it, false) || ItemUtil.isBlank(scd, false)) return;
-                recipe = new SmithingTransformRecipe(nsk, resultItem, IdChoice.of(ItemUtil.parse(cs.getString("recipe.c"))),
+                recipeLocal = new SmithingTransformRecipe(nsk, resultItem, IdChoice.of(ItemUtil.parse(cs.getString("recipe.c"))),
                     IdChoice.of(it), IdChoice.of(scd), !it.hasData(DataComponentTypes.DAMAGE));
+                recipeServer = new SmithingTransformRecipe(nsk, resultItem, typeChoiceOf(ItemUtil.parse(cs.getString("recipe.c"))),
+                    typeChoiceOf(it), typeChoiceOf(scd), !it.hasData(DataComponentTypes.DAMAGE));
                 break;
             case "noshape":
-                recipe = new ShapelessRecipe(nsk, resultItem);
+                recipeLocal = new ShapelessRecipe(nsk, resultItem);
                 for (final String s : cs.getConfigurationSection("recipe").getKeys(false)) {
                     final ItemStack ii = ItemUtil.parse(cs.getString("recipe." + s));
                     if (!ii.getType().isAir()) {
-                        ((ShapelessRecipe) recipe).addIngredient(IdChoice.of(ItemUtil.parse(cs.getString("recipe." + s))));
+                        ((ShapelessRecipe) recipeLocal).addIngredient(IdChoice.of(ItemUtil.parse(cs.getString("recipe." + s))));
+                    }
+                }
+                recipeServer = new ShapelessRecipe(nsk, resultItem);
+                for (final String s : cs.getConfigurationSection("recipe").getKeys(false)) {
+                    final ItemStack ii = ItemUtil.parse(cs.getString("recipe." + s));
+                    if (!ii.getType().isAir()) {
+                        ((ShapelessRecipe) recipeServer).addIngredient(typeChoiceOf(ItemUtil.parse(cs.getString("recipe." + s))));
                     }
                 }
                 break;
             case "shaped":
             default:
-                recipe = new ShapedRecipe(nsk, resultItem);
+                recipeLocal = new ShapedRecipe(nsk, resultItem);
                 final String shp = cs.getString("shape");
-                ((ShapedRecipe) recipe).shape(shp == null ? new String[]{"abc", "def", "ghi"} : shp.split(":"));
+                ((ShapedRecipe) recipeLocal).shape(shp == null ? new String[]{"abc", "def", "ghi"} : shp.split(":"));
                 for (final String s : cs.getConfigurationSection("recipe").getKeys(false)) {
-                    ((ShapedRecipe) recipe).setIngredient(s.charAt(0), IdChoice.of(ItemUtil.parse(cs.getString("recipe." + s))));
+                    ((ShapedRecipe) recipeLocal).setIngredient(s.charAt(0), IdChoice.of(ItemUtil.parse(cs.getString("recipe." + s))));
+                }
+                recipeServer = new ShapedRecipe(nsk, resultItem);
+                ((ShapedRecipe) recipeServer).shape(shp == null ? new String[]{"abc", "def", "ghi"} : shp.split(":"));
+                for (final String s : cs.getConfigurationSection("recipe").getKeys(false)) {
+                    ((ShapedRecipe) recipeServer).setIngredient(s.charAt(0), typeChoiceOf(ItemUtil.parse(cs.getString("recipe." + s))));
                 }
                 break;
         }
-        Bukkit.addRecipe(recipe);
-        crafts.put(nsk, new Craft(recipe, p -> true));
 
+        Bukkit.addRecipe(recipeServer);
+        crafts.put(nsk, new Craft(recipeLocal, p -> true));
+    }
+
+    private static RecipeChoice typeChoiceOf(final ItemStack it) {
+        final ItemType tp = it.getType().asItemType();
+        return RecipeChoice.itemType(tp == null ? ItemType.AIR : tp);
     }
 
     @SuppressWarnings("unchecked")
@@ -728,7 +753,7 @@ public final class CraftManager implements Listener {
                 return true;
             }
             cs.set("recipe.a", ItemUtil.write(it));
-            nrc = new FurnaceRecipe(nKey, rst, IdChoice.of(it), 0.5f, 200);
+            nrc = new FurnaceRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 200);
             Bukkit.removeRecipe(nKey);
             Bukkit.addRecipe(nrc, true);
         } else if (ItemType.SMOKER.equals(tp)) {
@@ -738,7 +763,7 @@ public final class CraftManager implements Listener {
                 return true;
             }
             cs.set("recipe.a", ItemUtil.write(it));
-            nrc = new SmokingRecipe(nKey, rst, IdChoice.of(it), 0.5f, 100);
+            nrc = new SmokingRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 100);
             Bukkit.removeRecipe(nKey);
             Bukkit.addRecipe(nrc, true);
         } else if (ItemType.BLAST_FURNACE.equals(tp)) {
@@ -748,7 +773,7 @@ public final class CraftManager implements Listener {
                 return true;
             }
             cs.set("recipe.a", ItemUtil.write(it));
-            nrc = new BlastingRecipe(nKey, rst, IdChoice.of(it), 0.5f, 100);
+            nrc = new BlastingRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 100);
             Bukkit.removeRecipe(nKey);
             Bukkit.addRecipe(nrc, true);
         } else if (ItemType.CAMPFIRE.equals(tp)) {
@@ -758,7 +783,7 @@ public final class CraftManager implements Listener {
                 return true;
             }
             cs.set("recipe.a", ItemUtil.write(it));
-            nrc = new CampfireRecipe(nKey, rst, IdChoice.of(it), 0.5f, 500);
+            nrc = new CampfireRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 500);
             Bukkit.removeRecipe(nKey);
             Bukkit.addRecipe(nrc, true);
         } else if (ItemType.SMITHING_TABLE.equals(tp)) {
@@ -772,8 +797,8 @@ public final class CraftManager implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             cs.set("recipe.b", ItemUtil.write(scd));
             cs.set("recipe.c", ItemUtil.write(tpl));
-            nrc = new SmithingTransformRecipe(nKey, rst, IdChoice.of(tpl), IdChoice.of(it),
-                IdChoice.of(scd), !it.hasData(DataComponentTypes.DAMAGE));
+            nrc = new SmithingTransformRecipe(nKey, rst, typeChoiceOf(tpl), typeChoiceOf(it),
+                typeChoiceOf(scd), !it.hasData(DataComponentTypes.DAMAGE));
             Bukkit.removeRecipe(nKey);
             Bukkit.addRecipe(nrc, true);
         } else if (ItemType.STONECUTTER.equals(tp)) {
@@ -783,7 +808,7 @@ public final class CraftManager implements Listener {
                 return true;
             }
             cs.set("recipe.a", ItemUtil.write(it));
-            nrc = new StonecuttingRecipe(nKey, rst, IdChoice.of(it));
+            nrc = new StonecuttingRecipe(nKey, rst, typeChoiceOf(it));
             Bukkit.removeRecipe(nKey);
             Bukkit.addRecipe(nrc, true);
         } else if (ItemType.ENDER_CHEST.equals(tp)) {
@@ -793,7 +818,7 @@ public final class CraftManager implements Listener {
                 for (byte cx = 1; cx < 4; cx++) {
                     final ItemStack ti = inv.getItem(cy * 9 + cx);
                     if (!ItemUtil.isBlank(ti, false)) {
-                        lrs.addIngredient(IdChoice.of(ti));
+                        lrs.addIngredient(typeChoiceOf(ti));
                         cs.set("recipe." + shp[cy].charAt(cx - 1), ItemUtil.write(ti));
                     }
                 }
@@ -833,7 +858,7 @@ public final class CraftManager implements Listener {
                 for (int cy = yMax; cy >= yMin; cy--) {
                     final ItemStack ti = rcs[cy * rad + cx];
                     if (!ItemUtil.isBlank(ti, false)) {
-                        srs.setIngredient(shp[cy - yMin].charAt(cx - xMin), IdChoice.of(ti));
+                        srs.setIngredient(shp[cy - yMin].charAt(cx - xMin), typeChoiceOf(ti));
                         cs.set("recipe." + shp[cy - yMin].charAt(cx - xMin), ItemUtil.write(ti));
                     }
                 }
