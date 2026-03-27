@@ -1,11 +1,8 @@
 package ru.immensia;
 
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.UUID;
 import com.destroystokyo.paper.ParticleBuilder;
 import com.destroystokyo.paper.entity.villager.Reputation;
 import com.destroystokyo.paper.entity.villager.ReputationType;
@@ -14,7 +11,9 @@ import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.Equippable;
 import io.papermc.paper.datacomponent.item.Fireworks;
+import io.papermc.paper.datacomponent.item.ItemArmorTrim;
 import io.papermc.paper.datacomponent.item.ItemEnchantments;
+import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -50,6 +49,9 @@ import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.trim.ArmorTrim;
+import org.bukkit.inventory.meta.trim.TrimMaterial;
+import org.bukkit.inventory.meta.trim.TrimPattern;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -382,7 +384,7 @@ public class MainLis implements Listener {
                         if (p.hasCooldown(it)) break;
                         final PotionEffect oml = p.getPotionEffect(PotionEffectType.BAD_OMEN);
                         p.removePotionEffect(PotionEffectType.BAD_OMEN);
-                        p.addPotionEffect(new PotionEffect(PotionEffectType.BAD_OMEN, 1000,
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.BAD_OMEN, OMEN_TIME,
                             oml == null ? 0 : oml.getAmplifier() + 1, true, true, true));
                         p.getInventory().setItem(e.getHand(), it.subtract());
                         break;
@@ -450,7 +452,7 @@ public class MainLis implements Listener {
 
         final BVec loc = BVec.of(e.getLocation());
         final int dstSq = loc.distAbs(cr.getWorld().getSpawnLocation()) >> (DST_DEL
-            - (cr.getWorld().getEnvironment() == World.Environment.NETHER ? 3 : 0));
+            - (cr.getWorld().getEnvironment() == World.Environment.NETHER ? 2 : 0));
         final Player near = LocUtil.getClsChEnt(loc, SPAWN_DST, Player.class, null);
         if (near == null) {
             cr.remove();
@@ -574,10 +576,8 @@ public class MainLis implements Listener {
         if (eff != null) eff.setBaseValue(eff.getBaseValue() * 1.4d);
     }
 
-    private static final Enchantment[] WEAPON = {Enchantment.FLAME, Enchantment.POWER, Enchantment.PUNCH,
-            Enchantment.KNOCKBACK, Enchantment.SHARPNESS, Enchantment.UNBREAKING, Enchantment.FIRE_ASPECT},
-        ARMOR = {Enchantment.UNBREAKING, Enchantment.PROTECTION, Enchantment.THORNS,
-            Enchantment.PROJECTILE_PROTECTION, Enchantment.DEPTH_STRIDER};
+    private static final TrimMaterial[] MATS = IStrap.getAll(RegistryKey.TRIM_MATERIAL).toArray(new TrimMaterial[0]);
+    private static final TrimPattern[] TRIMS = IStrap.getAll(RegistryKey.TRIM_PATTERN).toArray(new TrimPattern[0]);
 
     private static final int WEAR_DEL = 1;
     private static void wearChance(final LivingEntity le, final int dstSq, final ItemType[]... mts) {
@@ -590,7 +590,37 @@ public class MainLis implements Listener {
             final EquipmentSlot slot = es == null ? EquipmentSlot.HAND : es.slot();
             eq.setItem(slot, enchanted(mt, slot, wear), false);
         }
+
+        // x x x
+        // x y y
+        // x y x
+        // x x y
+
+        final TrimPattern trimX = ClassUtil.rndElmt(TRIMS);
+        final TrimPattern trimY = ClassUtil.rndElmt(TRIMS);
+        final TrimMaterial mat1 = ClassUtil.rndElmt(MATS);
+        final TrimMaterial mat2 = ClassUtil.rndElmt(MATS);
+        switch (Main.srnd.nextInt(4)) {
+            case 1:
+
+                break;
+            default: // x x x x
+                for (final EquipmentSlot es : EquipmentSlot.values()) {
+                    switch (es) {case FEET, LEGS, CHEST, HEAD: break; default: continue;}
+                    final ItemStack ar = eq.getItem(es);
+                    if (ar == null) continue;
+                    ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
+                        new ArmorTrim(Main.srnd.nextBoolean() ? mat1 : mat2, trimX)).build());
+                    eq.setItem(es, ar);
+                }
+                break;
+        }
     }
+
+    private static final Enchantment[] WEAPON = {Enchantment.FLAME, Enchantment.POWER, Enchantment.PUNCH,
+        Enchantment.KNOCKBACK, Enchantment.SHARPNESS, Enchantment.UNBREAKING, Enchantment.FIRE_ASPECT},
+        ARMOR = {Enchantment.UNBREAKING, Enchantment.PROTECTION, Enchantment.THORNS,
+            Enchantment.PROJECTILE_PROTECTION, Enchantment.DEPTH_STRIDER};
 
     private static final int ENCH_DEL = 1;
     private static ItemStack enchanted(final ItemType mt, final EquipmentSlot slot, final int wear) {
@@ -603,9 +633,13 @@ public class MainLis implements Listener {
         if (ench == 0) return it;
         ClassUtil.shuffle(enchs);
         final ItemBuilder ib = new ItemBuilder(it);
+        final List<Enchantment> added = new ArrayList<>();
         for (int i = Math.min(ench, enchs.length - 1) - 1; i >= 0; i--) {
             if (Main.srnd.nextBoolean() || !enchs[i].canEnchantItem(it)) continue;
-            ib.enchant(enchs[i], Main.srnd.nextInt(ench) + 1);
+            final Enchantment che = enchs[i];
+            if (added.stream().anyMatch(en -> en.conflictsWith(che))) continue;
+            ib.enchant(che, Math.min(Main.srnd.nextInt(ench) + 1, che.getMaxLevel()));
+            added.add(che);
         }
         return ib.build();
     }
