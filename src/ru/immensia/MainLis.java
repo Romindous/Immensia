@@ -596,21 +596,42 @@ public class MainLis implements Listener {
         // x y x
         // x x y
 
-        final TrimPattern trimX = ClassUtil.rndElmt(TRIMS);
-        final TrimPattern trimY = ClassUtil.rndElmt(TRIMS);
-        final TrimMaterial mat1 = ClassUtil.rndElmt(MATS);
-        final TrimMaterial mat2 = ClassUtil.rndElmt(MATS);
-        switch (Main.srnd.nextInt(4)) {
-            case 1:
-
+        final TrimPattern trim1 = ClassUtil.rndElmt(TRIMS);
+        final TrimPattern trim2 = ClassUtil.rndElmt(TRIMS);
+        final TrimMaterial matX = ClassUtil.rndElmt(MATS);
+        final TrimMaterial matY = ClassUtil.rndElmt(MATS);
+        switch (Main.srnd.nextInt(3)) {
+            case 0: // x y x y
+                for (final EquipmentSlot es : EquipmentSlot.values()) {
+                    if (!es.isArmor()) continue;
+                    final ItemStack ar = eq.getItem(es);
+                    if (ItemUtil.isBlank(ar, false)) continue;
+                    if ((es.ordinal() & 1) == 0) ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
+                        new ArmorTrim(matX, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
+                    else ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
+                        new ArmorTrim(matY, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
+                    eq.setItem(es, ar);
+                }
+                break;
+            case 1: // x y y x
+                for (final EquipmentSlot es : EquipmentSlot.values()) {
+                    if (!es.isArmor()) continue;
+                    final ItemStack ar = eq.getItem(es);
+                    if (ItemUtil.isBlank(ar, false)) continue;
+                    if ((es.ordinal() & 3) < 2) ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
+                        new ArmorTrim(matX, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
+                    else ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
+                        new ArmorTrim(matY, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
+                    eq.setItem(es, ar);
+                }
                 break;
             default: // x x x x
                 for (final EquipmentSlot es : EquipmentSlot.values()) {
-                    switch (es) {case FEET, LEGS, CHEST, HEAD: break; default: continue;}
+                    if (!es.isArmor()) continue;
                     final ItemStack ar = eq.getItem(es);
-                    if (ar == null) continue;
+                    if (ItemUtil.isBlank(ar, false)) continue;
                     ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
-                        new ArmorTrim(Main.srnd.nextBoolean() ? mat1 : mat2, trimX)).build());
+                        new ArmorTrim(matX, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
                     eq.setItem(es, ar);
                 }
                 break;
