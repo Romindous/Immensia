@@ -21,6 +21,7 @@ import net.kyori.adventure.util.TriState;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.damage.DamageType;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.*;
@@ -418,11 +419,12 @@ public class ItemUtil {
         });
         dataParser.put(DataComponentTypes.DAMAGE_RESISTANT, new DataParser.Parser<>() {
             public String write(final DamageResistant val) {
-                return ofKey(val.types());
+                return String.join(seps[1].get(), val.types().resolve(Main.registries.DAMAGES)
+                    .stream().map(t -> ofKey(t.key())).toArray(i -> new String[i]));
             }
 
             public DamageResistant parse(final String str) {
-                return DamageResistant.damageResistant(TagKey.create(RegistryKey.DAMAGE_TYPE, Key.key(str)));
+                return DamageResistant.damageResistant(IStrap.regSetOf(Arrays.stream(seps[1].split(str)).map(Key::key).toList(), RegistryKey.DAMAGE_TYPE));
             }
         });
         dataParser.put(DataComponentTypes.ENCHANTABLE, new DataParser.Parser<>() {
@@ -727,7 +729,8 @@ public class ItemUtil {
             public String write(final BlocksAttacks val) {
                 return String.join(seps[1].get(), String.valueOf(val.blockDelaySeconds()),
                     String.valueOf(val.disableCooldownScale()),
-                    val.bypassedBy() == null ? StringUtil.NA : val.bypassedBy().key().asMinimalString(),
+                    val.bypassedBy() == null ? StringUtil.NA : String.join(seps[2].get(), val.bypassedBy()
+                        .resolve(Main.registries.DAMAGES).stream().map(t -> ofKey(t.key())).toArray(i -> new String[i])),
                     val.blockSound() == null ? StringUtil.NA : val.blockSound().asMinimalString(),
                     val.disableSound() == null ? StringUtil.NA : val.disableSound().asMinimalString());
             }
@@ -738,8 +741,8 @@ public class ItemUtil {
                 if (!ClassUtil.check(parts, 5, false)) return bld.build();
                 bld.blockDelaySeconds(NumUtil.floatOf(parts[0], 0f));
                 bld.disableCooldownScale(NumUtil.floatOf(parts[1], 1f));
-                if (!StringUtil.isNA(parts[2])) bld.bypassedBy(TagKey
-                    .create(RegistryKey.DAMAGE_TYPE, Key.key(parts[2])));
+                if (!StringUtil.isNA(parts[2])) bld.bypassedBy(IStrap.regSetOf(Arrays
+                    .stream(parts[2].split(str)).map(Key::key).toList(), RegistryKey.DAMAGE_TYPE));
                 if (!StringUtil.isNA(parts[3])) bld.blockSound(Key.key(parts[3]));
                 if (!StringUtil.isNA(parts[4])) bld.disableSound(Key.key(parts[4]));
                 return bld.build();

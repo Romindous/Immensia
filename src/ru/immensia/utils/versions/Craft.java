@@ -6,7 +6,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.block.BlockType;
@@ -85,10 +84,6 @@ public class Craft {
   public static net.minecraft.world.item.ItemStack toNMS(final ItemStack is) {
     return CraftItemStack.asNMSCopy(is);
   }
-
-    public static BlockData fromNMS(final BlockState bs) {
-        return CraftBlockData.fromData(bs);
-    }
 
     public static PlayerInventory fromNMS(final Inventory inv) {
         return new CraftInventoryPlayer(inv);

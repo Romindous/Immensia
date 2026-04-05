@@ -11,7 +11,6 @@ import io.papermc.paper.datacomponent.item.DeathProtection;
 import io.papermc.paper.math.BlockPosition;
 import io.papermc.paper.persistence.PaperPersistentDataContainerView;
 import io.papermc.paper.persistence.PersistentDataContainerView;
-import net.kyori.adventure.key.Key;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponents;
@@ -24,7 +23,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.bukkit.*;
@@ -49,14 +47,6 @@ import ru.immensia.utils.locs.BVec;
 
 
 public class Nms {
-
-    private static final Key chatKey;
-    private static final String signId;
-
-    static {
-        chatKey = Key.key("ostrov_chat", "listener");
-        signId = BlockEntityType.getKey(BlockEntityType.SIGN).toString();
-    }
 
     public static void fakeItem(final Player p, final ItemStack it, final int slot) {
         sendPacket(p, new ClientboundSetPlayerInventoryPacket(slot, net.minecraft.world.item.ItemStack.fromBukkitCopy(it)));
@@ -173,19 +163,19 @@ public class Nms {
     public static BlockData fastData(final World w, int x, int y, int z) {
         final ServerLevel sl = Craft.toNMS(w);
         final BlockState iBlockData = sl.getBlockState(new BlockPos(x, y, z));
-        return iBlockData.createCraftBlockData();
+        return iBlockData.asBlockData();
     }
 
     public static BlockData fastData(final World w, final BVec bv) {
         final ServerLevel sl = Craft.toNMS(w);
         final BlockState iBlockData = sl.getBlockState(new BlockPos(bv.x, bv.y, bv.z));
-        return iBlockData.createCraftBlockData();
+        return iBlockData.asBlockData();
     }
 
     public static BlockData fastData(final Location loc) {
         final ServerLevel sl = Craft.toNMS(loc.getWorld());
         final BlockState iBlockData = sl.getBlockState(new BlockPos(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
-        return iBlockData.createCraftBlockData();
+        return iBlockData.asBlockData();
     }
 
     public static void fastType(final World w, final List<BlockPosition> poss, final BlockType bt) {
@@ -246,21 +236,13 @@ public class Nms {
         final LevelChunk nmsChunk = ws.getChunkIfLoaded(chunk.getX(), chunk.getZ());
         if (nmsChunk == null) return;
         final ClientboundLevelChunkWithLightPacket packet = new ClientboundLevelChunkWithLightPacket(
-            nmsChunk, ws.getLightEngine(), null, null, true);
+            nmsChunk, ws.getLightEngine(), null, null);
         sendPacket(p, packet);//toNMS(p).c.a(packet);//sendPacket(p, packet);
     }
 
     public static void swing(final LivingEntity le, final EquipmentSlot hand) {
         Craft.toNMS(le).swinging = false;
         le.swingHand(hand);
-    }
-
-    public static void noFallDmg(final Player pl) {
-        Craft.toNMS(pl).setIgnoreFallDamageFromCurrentImpulse(true);
-    }
-
-    public static boolean hasFallDmg(final Player pl) {
-        return !Craft.toNMS(pl).isIgnoringFallDamageFromCurrentImpulse();
     }
 
     public static void zoom(final Player pl, final float zoom) {

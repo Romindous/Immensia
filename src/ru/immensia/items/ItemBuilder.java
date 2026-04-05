@@ -34,8 +34,8 @@ import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.objects.Onection;
 import ru.immensia.utils.ItemUtil;
-import ru.immensia.utils.versions.Nms;
 import ru.immensia.utils.strings.TCUtil;
+import ru.immensia.utils.versions.Nms;
 
 public class ItemBuilder {
 
@@ -428,8 +428,14 @@ public class ItemBuilder {
         return set(DataComponentTypes.CONSUMABLE, cnb.build());
     }
 
+    @Deprecated
     public ItemBuilder resist(final TagKey<DamageType> types) {
-        return set(DataComponentTypes.DAMAGE_RESISTANT, DamageResistant.damageResistant(types));
+        return resist(IStrap.getAll(types));
+    }
+
+    public ItemBuilder resist(final Set<DamageType> types) {
+        return set(DataComponentTypes.DAMAGE_RESISTANT, DamageResistant
+            .damageResistant(RegistrySet.keySetFromValues(RegistryKey.DAMAGE_TYPE, types)));
     }
 
     public ItemBuilder enchantable(final int lvl) {
