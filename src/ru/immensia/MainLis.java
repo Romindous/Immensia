@@ -591,10 +591,10 @@ public class MainLis implements Listener {
             eq.setItem(slot, enchanted(mt, slot, wear), false);
         }
 
-        // x x x
-        // x y y
-        // x y x
-        // x x y
+        // x x x x
+        // x y y x
+        // x y x y
+        // x x y y
 
         final TrimPattern trim1 = ClassUtil.rndElmt(TRIMS);
         final TrimPattern trim2 = ClassUtil.rndElmt(TRIMS);
@@ -606,11 +606,10 @@ public class MainLis implements Listener {
                     if (!es.isArmor()) continue;
                     final ItemStack ar = eq.getItem(es);
                     if (ItemUtil.isBlank(ar, false)) continue;
-                    if ((es.ordinal() & 1) == 0) ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
-                        new ArmorTrim(matX, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
-                    else ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
-                        new ArmorTrim(matY, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
-                    eq.setItem(es, ar);
+                    final TrimMaterial mat = (es.ordinal() & 1) == 0 ? matX : matY;
+                    ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
+                        new ArmorTrim(mat, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
+                    eq.setItem(es, ItemUtil.trimMod(ar, matType(mat)));
                 }
                 break;
             case 1: // x y y x
@@ -618,24 +617,39 @@ public class MainLis implements Listener {
                     if (!es.isArmor()) continue;
                     final ItemStack ar = eq.getItem(es);
                     if (ItemUtil.isBlank(ar, false)) continue;
-                    if ((es.ordinal() & 3) < 2) ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
-                        new ArmorTrim(matX, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
-                    else ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
-                        new ArmorTrim(matY, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
-                    eq.setItem(es, ar);
+                    final TrimMaterial mat = (es.ordinal() & 3) < 2 ? matX : matY;
+                    ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
+                        new ArmorTrim(mat, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
+                    eq.setItem(es, ItemUtil.trimMod(ar, matType(mat)));
                 }
                 break;
             default: // x x x x
+                final ItemStack itX = matType(matX).createItemStack();
                 for (final EquipmentSlot es : EquipmentSlot.values()) {
                     if (!es.isArmor()) continue;
                     final ItemStack ar = eq.getItem(es);
                     if (ItemUtil.isBlank(ar, false)) continue;
                     ar.setData(DataComponentTypes.TRIM, ItemArmorTrim.itemArmorTrim(
                         new ArmorTrim(matX, Main.srnd.nextBoolean() ? trim1 : trim2)).build());
-                    eq.setItem(es, ar);
+                    eq.setItem(es, ItemUtil.trimMod(ar, matType(matX)));
                 }
                 break;
         }
+    }
+
+    private static ItemType matType(final TrimMaterial mat) {
+        if (mat == TrimMaterial.AMETHYST) return ItemType.AMETHYST_SHARD;
+        if (mat == TrimMaterial.COPPER) return ItemType.COPPER_INGOT;
+        if (mat == TrimMaterial.DIAMOND) return ItemType.DIAMOND;
+        if (mat == TrimMaterial.GOLD) return ItemType.GOLD_INGOT;
+        if (mat == TrimMaterial.IRON) return ItemType.IRON_INGOT;
+        if (mat == TrimMaterial.EMERALD) return ItemType.EMERALD;
+        if (mat == TrimMaterial.LAPIS) return ItemType.LAPIS_LAZULI;
+        if (mat == TrimMaterial.NETHERITE) return ItemType.NETHERITE_INGOT;
+        if (mat == TrimMaterial.QUARTZ) return ItemType.QUARTZ;
+        if (mat == TrimMaterial.REDSTONE) return ItemType.REDSTONE;
+        if (mat == TrimMaterial.RESIN) return ItemType.RESIN_BRICK;
+        return null;
     }
 
     private static final Enchantment[] WEAPON = {Enchantment.FLAME, Enchantment.POWER, Enchantment.PUNCH,

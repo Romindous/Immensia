@@ -6,6 +6,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.regex.Pattern;
 import com.destroystokyo.paper.profile.ProfileProperty;
+import com.google.common.collect.Multimap;
 import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.*;
@@ -13,7 +14,6 @@ import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 import io.papermc.paper.persistence.PersistentDataContainerView;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import io.papermc.paper.registry.tag.TagKey;
 import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -21,7 +21,6 @@ import net.kyori.adventure.util.TriState;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
-import org.bukkit.damage.DamageType;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.*;
@@ -162,6 +161,119 @@ public class ItemUtil {
             if (!testStat(is1, is2, s)) return false;
         }
         return true;
+    }
+
+    public static ItemStack trimMod(final ItemStack it, final ItemType mat) {
+        if (mat == null) return it;
+        final Material mt = it.getType();
+        final EquipmentSlot es = mt.getEquipmentSlot();
+        final EquipmentSlotGroup esg = es.getGroup();
+        final Multimap<Attribute, AttributeModifier> amt = mt.getDefaultAttributeModifiers(es);
+        final String slotId = switch (es) {
+            case HAND -> "hand";
+            case OFF_HAND -> "offhand";
+            case FEET -> "boots";
+            case LEGS -> "leggings";
+            case CHEST -> "chestplate";
+            case HEAD -> "helmet";
+            case BODY -> "body";
+            case SADDLE -> "saddle";
+        };
+        final ItemAttributeModifiers iams = it.getData(DataComponentTypes.ATTRIBUTE_MODIFIERS);
+        final ItemAttributeModifiers.Builder bld = ItemAttributeModifiers.itemAttributes();
+        for (final ItemAttributeModifiers.Entry md : iams.modifiers()) {
+            if (md.getGroup().equals(esg)) continue;
+            bld.addModifier(md.attribute(), md.modifier(), md.getGroup(), md.display());
+        }
+        double arm = 0d;
+        for (final AttributeModifier am : amt.get(ARMOR)) {
+            switch (am.getOperation()) {
+                case ADD_NUMBER:
+                    arm += am.getAmount();
+                    break;
+                case ADD_SCALAR:
+                    arm *= am.getAmount();
+                    break;
+                case MULTIPLY_SCALAR_1:
+                    arm *= (1d + am.getAmount());
+                    break;
+            }
+        }
+        double ath = 0d;
+        for (final AttributeModifier am : amt.get(ARMOR_TOUGHNESS)) {
+            switch (am.getOperation()) {
+                case ADD_NUMBER:
+                    ath += am.getAmount();
+                    break;
+                case ADD_SCALAR:
+                    ath *= am.getAmount();
+                    break;
+                case MULTIPLY_SCALAR_1:
+                    ath *= (1d + am.getAmount());
+                    break;
+            }
+        }
+        double akb = 0d;
+        for (final AttributeModifier am : amt.get(KNOCKBACK_RESISTANCE)) {
+            switch (am.getOperation()) {
+                case ADD_NUMBER:
+                    akb += am.getAmount();
+                    break;
+                case ADD_SCALAR:
+                    akb *= am.getAmount();
+                    break;
+                case MULTIPLY_SCALAR_1:
+                    akb *= (1d + am.getAmount());
+                    break;
+            }
+        }
+
+        bld.addModifier(ARMOR, new AttributeModifier(NamespacedKey.minecraft("armor." + slotId),
+            arm * (1d + getTrimMod(mat, ARMOR)), AttributeModifier.Operation.ADD_NUMBER, esg));
+
+        bld.addModifier(ARMOR_TOUGHNESS, new AttributeModifier(NamespacedKey.minecraft("armor." + slotId),
+            ath * (1d + getTrimMod(mat, ARMOR_TOUGHNESS)), AttributeModifier.Operation.ADD_NUMBER, esg));
+
+        bld.addModifier(KNOCKBACK_RESISTANCE, new AttributeModifier(NamespacedKey.minecraft("armor." + slotId),
+            akb * (1d + getTrimMod(mat, KNOCKBACK_RESISTANCE)), AttributeModifier.Operation.ADD_NUMBER, esg));
+
+        addAttr(bld, MAX_HEALTH, mat, slotId, esg);
+        addAttr(bld, SCALE, mat, slotId, esg);
+        addAttr(bld, GRAVITY, mat, slotId, esg);
+        addAttr(bld, ATTACK_DAMAGE, mat, slotId, esg);
+        addAttr(bld, ATTACK_KNOCKBACK, mat, slotId, esg);
+        addAttr(bld, ATTACK_SPEED, mat, slotId, esg);
+        addAttr(bld, MOVEMENT_SPEED, mat, slotId, esg);
+        addAttr(bld, SNEAKING_SPEED, mat, slotId, esg);
+        addAttr(bld, WATER_MOVEMENT_EFFICIENCY, mat, slotId, esg);
+        addAttr(bld, JUMP_STRENGTH, mat, slotId, esg);
+        addAttr(bld, BLOCK_INTERACTION_RANGE, mat, slotId, esg);
+        addAttr(bld, ENTITY_INTERACTION_RANGE, mat, slotId, esg);
+        addAttr(bld, BLOCK_BREAK_SPEED, mat, slotId, esg);
+
+        /*addAttr(im, Attribute.MAX_HEALTH, mat, "armor_max_health", esg);
+        addAttr(im, Attribute.SCALE, mat, "armor_scale", esg);
+        addAttr(im, Attribute.GRAVITY, mat, "armor_gravity", esg);
+        addAttr(im, Attribute.ATTACK_DAMAGE, mat, "armor_attack_damage", esg);
+        addAttr(im, Attribute.ATTACK_KNOCKBACK, mat, "armor_attack_knockback", esg);
+        addAttr(im, Attribute.ATTACK_SPEED, mat, "armor_attack_speed", esg);
+        addAttr(im, Attribute.MOVEMENT_SPEED, mat, "armor_move_speed", esg);
+        addAttr(im, Attribute.SNEAKING_SPEED, mat, "armor_sneak_speed", esg);
+        addAttr(im, Attribute.WATER_MOVEMENT_EFFICIENCY, mat, "armor_water_speed", esg);
+        addAttr(im, Attribute.JUMP_STRENGTH, mat, "armor_jump_strength", esg);
+        addAttr(im, Attribute.BLOCK_INTERACTION_RANGE, mat, "armor_range_block", esg);
+        addAttr(im, Attribute.ENTITY_INTERACTION_RANGE, mat, "armor_range_entity", esg);
+        addAttr(im, Attribute.BLOCK_BREAK_SPEED, mat, "armor_break_speed", esg);*/
+
+        it.setData(DataComponentTypes.ATTRIBUTE_MODIFIERS, bld.build());
+        return it;
+    }
+
+    private static void addAttr(final ItemAttributeModifiers.Builder bld, final Attribute at,
+        final ItemType in, final String name, final EquipmentSlotGroup esg) {
+        final double mod = getTrimMod(in, at); if (mod == 0d) return;
+        bld.addModifier(at, new AttributeModifier(NamespacedKey.minecraft(name),
+            mod, AttributeModifier.Operation.MULTIPLY_SCALAR_1, esg));
     }
 
     public enum Stat {TYPE, AMOUNT, NAME, LORE, DAMAGE, MODEL, PDC}
@@ -869,76 +981,64 @@ public class ItemUtil {
         return key == null ? null : key.asMinimalString();
     }
 
-    public static double getTrimMod(final ItemStack ti, final Attribute atr) {
+    public static double getTrimMod(final ItemType ti, final Attribute atr) {
         if (ti == null) return 0d;
 
-        switch (ti.getType()) {
-            case IRON_INGOT -> {//more defense, less mobility
-                if (atr.equals(ARMOR)) return 0.2d;
-                else if (atr.equals(ARMOR_TOUGHNESS)) return 0.1d;
-                else if (atr.equals(MOVEMENT_SPEED)) return -0.1d;
-                else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return -0.1d;
-            }
-            case COPPER_INGOT -> {//more kick, less mining
-                if (atr.equals(ATTACK_KNOCKBACK)) return 0.2d;
-                else if (atr.equals(ATTACK_SPEED)) return 0.1d;
-                else if (atr.equals(BLOCK_BREAK_SPEED)) return -0.1d;
-                else if (atr.equals(GRAVITY)) return -0.1d;
-            }
-            case GOLD_INGOT -> {//more health, less light
-                if (atr.equals(MAX_HEALTH)) return 0.1d;
-                else if (atr.equals(GRAVITY)) return 0.1d;
-                else if (atr.equals(SNEAKING_SPEED)) return -0.1d;
-                else if (atr.equals(BLOCK_BREAK_SPEED)) return 0.1d;
-            }
-            case AMETHYST_SHARD -> {//more attack, less defense
-                if (atr.equals(ATTACK_DAMAGE)) return 0.1d;
-                else if (atr.equals(ARMOR)) return -0.2d;
-                else if (atr.equals(BLOCK_INTERACTION_RANGE)) return 0.1d;
-                else if (atr.equals(ENTITY_INTERACTION_RANGE)) return 0.1d;
-            }
-            case DIAMOND -> {//buffs armor and damage
-                if (atr.equals(ARMOR)) return 0.05d;
-                else if (atr.equals(ARMOR_TOUGHNESS)) return 0.1d;
-                else if (atr.equals(ATTACK_DAMAGE)) return 0.05d;
-                else if (atr.equals(KNOCKBACK_RESISTANCE)) return -0.1d;
-            }
-            case EMERALD -> {//more mobility, less damage
-                if (atr.equals(MOVEMENT_SPEED)) return 0.1d;
-                else if (atr.equals(ARMOR_TOUGHNESS)) return 0.1d;
-                else if (atr.equals(ATTACK_DAMAGE)) return -0.1d;
-                else if (atr.equals(JUMP_STRENGTH)) return 0.1d;
-            }
-            case REDSTONE -> {//more bulk, less kick
-                if (atr.equals(MAX_HEALTH)) return 0.1d;
-                else if (atr.equals(ATTACK_SPEED)) return 0.1d;
-                else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return -0.1d;
-                else if (atr.equals(JUMP_STRENGTH)) return -0.1d;
-            }
-            case LAPIS_LAZULI -> {//more mobility, less swing
-                if (atr.equals(SNEAKING_SPEED)) return 0.1d;
-                else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return 0.2d;
-                else if (atr.equals(ATTACK_SPEED)) return -0.1d;
-                else if (atr.equals(GRAVITY)) return -0.1d;
-            }
-            case NETHERITE_INGOT -> {//more toughness, less hp
-                if (atr.equals(ARMOR)) return 0.1d;
-                else if (atr.equals(ARMOR_TOUGHNESS)) return 0.4d;
-                else if (atr.equals(MAX_HEALTH)) return -0.1d;
-                else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return -0.1d;
-            }
-            case QUARTZ -> {//more damage, less haste
-                if (atr.equals(ATTACK_DAMAGE)) return 0.2d;
-                else if (atr.equals(ARMOR_TOUGHNESS)) return -0.1d;
-                else if (atr.equals(ATTACK_SPEED)) return -0.1d;
-                else if (atr.equals(SNEAKING_SPEED)) return -0.1d;
-            }
-            case RESIN_BRICK -> {//less health, less fall dmg and kb
-                if (atr.equals(SNEAKING_SPEED)) return 0.2d;
-                else if (atr.equals(ATTACK_KNOCKBACK)) return -0.1d;
-                else if (atr.equals(JUMP_STRENGTH)) return 0.1d;
-                else if (atr.equals(MAX_HEALTH)) return -0.1d;
-            }
+        if (ti == ItemType.IRON_INGOT) {//more defense, less mobility
+            if (atr.equals(ARMOR)) return 0.2d;
+            else if (atr.equals(ARMOR_TOUGHNESS)) return 0.1d;
+            else if (atr.equals(MOVEMENT_SPEED)) return -0.1d;
+            else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return -0.1d;
+        } else if (ti == ItemType.COPPER_INGOT) {//more kick, less mining
+            if (atr.equals(ATTACK_KNOCKBACK)) return 0.2d;
+            else if (atr.equals(ATTACK_SPEED)) return 0.1d;
+            else if (atr.equals(BLOCK_BREAK_SPEED)) return -0.1d;
+            else if (atr.equals(GRAVITY)) return -0.1d;
+        } else if (ti == ItemType.GOLD_INGOT) {//more health, less light
+            if (atr.equals(MAX_HEALTH)) return 0.1d;
+            else if (atr.equals(GRAVITY)) return 0.1d;
+            else if (atr.equals(SNEAKING_SPEED)) return -0.1d;
+            else if (atr.equals(BLOCK_BREAK_SPEED)) return 0.1d;
+        } else if (ti == ItemType.AMETHYST_SHARD) {//more attack, less defense
+            if (atr.equals(ATTACK_DAMAGE)) return 0.1d;
+            else if (atr.equals(ARMOR)) return -0.2d;
+            else if (atr.equals(BLOCK_INTERACTION_RANGE)) return 0.1d;
+            else if (atr.equals(ENTITY_INTERACTION_RANGE)) return 0.1d;
+        } else if (ti == ItemType.DIAMOND) {//buffs armor and damage
+            if (atr.equals(ARMOR)) return 0.05d;
+            else if (atr.equals(ARMOR_TOUGHNESS)) return 0.1d;
+            else if (atr.equals(ATTACK_DAMAGE)) return 0.05d;
+            else if (atr.equals(KNOCKBACK_RESISTANCE)) return -0.1d;
+        } else if (ti == ItemType.EMERALD) {//more mobility, less damage
+            if (atr.equals(MOVEMENT_SPEED)) return 0.1d;
+            else if (atr.equals(ARMOR_TOUGHNESS)) return 0.1d;
+            else if (atr.equals(ATTACK_DAMAGE)) return -0.1d;
+            else if (atr.equals(JUMP_STRENGTH)) return 0.1d;
+        } else if (ti == ItemType.REDSTONE) {//more bulk, less kick
+            if (atr.equals(MAX_HEALTH)) return 0.1d;
+            else if (atr.equals(ATTACK_SPEED)) return 0.1d;
+            else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return -0.1d;
+            else if (atr.equals(JUMP_STRENGTH)) return -0.1d;
+        } else if (ti == ItemType.LAPIS_LAZULI) {//more mobility, less swing
+            if (atr.equals(SNEAKING_SPEED)) return 0.1d;
+            else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return 0.2d;
+            else if (atr.equals(ATTACK_SPEED)) return -0.1d;
+            else if (atr.equals(GRAVITY)) return -0.1d;
+        } else if (ti == ItemType.NETHERITE_INGOT) {//more toughness, less hp
+            if (atr.equals(ARMOR)) return 0.1d;
+            else if (atr.equals(ARMOR_TOUGHNESS)) return 0.4d;
+            else if (atr.equals(MAX_HEALTH)) return -0.1d;
+            else if (atr.equals(WATER_MOVEMENT_EFFICIENCY)) return -0.1d;
+        } else if (ti == ItemType.QUARTZ) {//more damage, less haste
+            if (atr.equals(ATTACK_DAMAGE)) return 0.2d;
+            else if (atr.equals(ARMOR_TOUGHNESS)) return -0.1d;
+            else if (atr.equals(ATTACK_SPEED)) return -0.1d;
+            else if (atr.equals(SNEAKING_SPEED)) return -0.1d;
+        } else if (ti == ItemType.RESIN_BRICK) {//less health, less fall dmg and kb
+            if (atr.equals(SNEAKING_SPEED)) return 0.2d;
+            else if (atr.equals(ATTACK_KNOCKBACK)) return -0.1d;
+            else if (atr.equals(JUMP_STRENGTH)) return 0.1d;
+            else if (atr.equals(MAX_HEALTH)) return -0.1d;
         }
         return 0d;
     }
