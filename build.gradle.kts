@@ -14,7 +14,7 @@ plugins {
 
 
 dependencies {
-    paperweight.paperDevBundle("26.1.1.build.+")
+    paperweight.paperDevBundle("26.1.2.build.+")
 //  compileOnly(fileTree("libs"))
 }
 

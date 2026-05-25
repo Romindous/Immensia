@@ -1,18 +1,18 @@
 package ru.immensia.entities;
 
 import javax.annotation.Nullable;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.*;
 import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
 import io.papermc.paper.event.player.PlayerShieldDisableEvent;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.registry.keys.DamageTypeKeys;
 import io.papermc.paper.registry.keys.tags.ItemTypeTagKeys;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
@@ -72,8 +72,9 @@ public class PvPManager implements Listener {
     public static final int DHIT_CLD = 4;
     public static final int BLCK_CLD = 0;
     private static final int HIT_DUR = 8;
-    private static final float MIN_REACH = 0f;
     private static final int SPEAR_DELAY = 4;
+    private static final float MIN_REACH = 0f;
+    private static final float HITBOX_BUFF = 0.2f;
 
     public PvPManager() {
         reload();
@@ -89,6 +90,29 @@ public class PvPManager implements Listener {
 
     public void onDisable() {
         Main.log("§6PvP выключено!");
+    }
+
+    private static final Map<UUID, Float> cooldowns = new HashMap<>();
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
+    public void EntityDamageByEntityEvent(final PrePlayerAttackEntityEvent e) {
+        if (!e.willAttack()) return;
+        final Player damager = e.getPlayer();
+        if (!(e.getAttacked() instanceof final LivingEntity target)) return;
+        if (!(target instanceof Mob) && !(target instanceof ArmorStand)) return;
+        final ItemStack shd = target.getEquipment().getItemInOffHand();
+        if (ItemUtil.is(shd, ItemType.SHIELD)) {
+            target.getWorld().playSound(EntityUtil.center(target),
+                Sound.ITEM_SHIELD_BLOCK, 0.8f, 0.8f);
+            if (damager.getAttackCooldown() == 1f) {
+                EntityUtil.effect(target, Sound.ITEM_SHIELD_BREAK, 0.8f,
+                    Particle.ITEM, ItemType.SHIELD.createItemStack());
+                target.getEquipment().setItemInOffHand(null);
+            }
+            e.setCancelled(true);
+            return;
+        }
+        cooldowns.put(damager.getUniqueId(),
+            damager.getAttackCooldown());
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
@@ -157,7 +181,7 @@ public class PvPManager implements Listener {
             Main.sync(() -> EntityUtil.indicate(target.getEyeLocation(), (e.isCritical() ? "<red>✘" : "<gold>")
                 + StringUtil.toSigFigs(e.getFinalDamage(), (byte) 1), dmgrPl), 1);
 
-            if (dmgrPl.getAttackCooldown() != 1f || !dmgrPl.isSprinting()
+            if (!isFullHit(damager) || !dmgrPl.isSprinting()
                 || !DUAL_HIT.contains(hand.getType().asItemType())) return;
 
             final ItemStack ofh = inv.getItemInOffHand();
@@ -166,30 +190,26 @@ public class PvPManager implements Listener {
             Main.sync(() -> {
                 final ItemStack noh = inv.getItemInOffHand();
                 if (dmgrPl.isValid() && target.isValid() && noh.equals(ofh)) {
-                    final ItemStack it = inv.getItemInMainHand().clone();
                     target.setNoDamageTicks(-1);
-                    dmgrPl.addPotionEffect(HASTE);
-                    inv.setItemInMainHand(ofh);
-                    dmgrPl.setSprinting(false);
-                    dmgrPl.attack(target);
+                    final int cdi = Nms.getFullCD(dmgrPl);
                     inv.setItemInOffHand(inv.getItemInMainHand());
-                    inv.setItemInMainHand(it);
-                    dmgrPl.removePotionEffect(HASTE.getType());
-                    Nms.swing(dmgrPl, EquipmentSlot.OFF_HAND);
+                    inv.setItemInMainHand(ofh);
+                    Main.sync(() -> {
+                        final int cdn = Nms.getFullCD(dmgrPl);
+                        Nms.setCD(dmgrPl, Math.min((float) cdi / (float) cdn, 0.9f));
+                        dmgrPl.attack(target);
+                        dmgrPl.setSprinting(false);
+                        final ItemStack nmh = inv.getItemInMainHand().clone();
+                        inv.setItemInMainHand(inv.getItemInOffHand());
+                        inv.setItemInOffHand(nmh);
+                        Nms.swing(dmgrPl, EquipmentSlot.OFF_HAND);
+                    }, 1);
                 }
             }, DHIT_CLD);
             return;
         }
 
         if (target instanceof Mob || target instanceof ArmorStand) {// # v M
-            final ItemStack shd = target.getEquipment().getItemInOffHand();
-            final boolean shielded = ItemUtil.is(shd, ItemType.SHIELD);
-            if (shielded) {
-                target.getWorld().playSound(target.getLocation(),
-                    Sound.ITEM_SHIELD_BLOCK, 1f, 0.6f);
-                e.setDamage(e.getDamage() * 0.6d);
-            }
-
             if (damager instanceof final Player dmgrPl) {// P v M
                 final PlayerInventory inv = dmgrPl.getInventory();
                 final ItemStack hand = inv.getItemInMainHand();
@@ -204,7 +224,7 @@ public class PvPManager implements Listener {
                 Main.sync(() -> EntityUtil.indicate(target.getEyeLocation(), (e.isCritical() ? "<red>✘" : "<gold>")
                     + StringUtil.toSigFigs(e.getFinalDamage(), (byte) 1), dmgrPl), 1);
 
-                if (shielded || dmgrPl.getAttackCooldown() != 1f || !dmgrPl.isSprinting()
+                if (!isFullHit(damager) || !dmgrPl.isSprinting()
                     || !DUAL_HIT.contains(hand.getType().asItemType())) return;
 
                 final ItemStack ofh = inv.getItemInOffHand();
@@ -214,16 +234,20 @@ public class PvPManager implements Listener {
                 Main.sync(() -> {
                     final ItemStack noh = inv.getItemInOffHand();
                     if (dmgrPl.isValid() && target.isValid() && noh.equals(ofh)) {
-                        final ItemStack it = inv.getItemInMainHand().clone();
                         target.setNoDamageTicks(-1);
-                        dmgrPl.addPotionEffect(HASTE);
-                        inv.setItemInMainHand(ofh);
-                        dmgrPl.setSprinting(false);
-                        dmgrPl.attack(target);
+                        final int cdi = Nms.getFullCD(dmgrPl);
                         inv.setItemInOffHand(inv.getItemInMainHand());
-                        inv.setItemInMainHand(it);
-                        dmgrPl.removePotionEffect(HASTE.getType());
-                        Nms.swing(dmgrPl, EquipmentSlot.OFF_HAND);
+                        inv.setItemInMainHand(ofh);
+                        Main.sync(() -> {
+                            final int cdn = Nms.getFullCD(dmgrPl);
+                            Nms.setCD(dmgrPl, Math.min((float) cdi / (float) cdn, 0.9f));
+                            dmgrPl.attack(target);
+                            dmgrPl.setSprinting(false);
+                            final ItemStack nmh = inv.getItemInMainHand().clone();
+                            inv.setItemInMainHand(inv.getItemInOffHand());
+                            inv.setItemInOffHand(nmh);
+                            Nms.swing(dmgrPl, EquipmentSlot.OFF_HAND);
+                        }, 1);
                     }
                 }, DHIT_CLD);
                 return;
@@ -240,6 +264,11 @@ public class PvPManager implements Listener {
                 damager.getEquipment().setItemInMainHand(hand);
             }
         }
+    }
+
+    private boolean isFullHit(final LivingEntity le) {
+        final Float cd = cooldowns.get(le.getUniqueId());
+        return cd != null && cd == 1f;
     }
 
     @EventHandler
@@ -322,8 +351,8 @@ public class PvPManager implements Listener {
     public static void onGet(final InventoryClickEvent e) {
         final Inventory inv = e.getClickedInventory();
         if (inv == null || inv.getType() != e.getView().getTopInventory().getType()) return;
-        final ItemStack it = updatePvPItem(e.getCurrentItem());
-        if (it != null) e.setCurrentItem(it);
+        final ItemStack it = updatePvPItem(inv.getItem(e.getSlot()));
+        if (it != null) inv.setItem(e.getSlot(), it);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -337,18 +366,15 @@ public class PvPManager implements Listener {
         if (it == null) return null;
         boolean change = false;
         final SwingAnimation swa = it.getData(DataComponentTypes.SWING_ANIMATION);
-        final boolean isTr = ItemUtil.is(it, ItemType.TRIDENT);
-        if (swa != null) {
-            final SwingAnimation.Animation at = isTr ? SwingAnimation.Animation.STAB : swa.type();
-            it.setData(DataComponentTypes.SWING_ANIMATION, SwingAnimation.swingAnimation().type(at)
-                .duration(HIT_DUR << (at == SwingAnimation.Animation.STAB ? 1 : 0)).build());
-            change = true;
-        }
-        if (isTr) {
+        final boolean isStab = ItemUtil.is(it, ItemType.TRIDENT)
+            || (swa != null && swa.type() == SwingAnimation.Animation.STAB);
+        if (isStab) {
+            it.setData(DataComponentTypes.SWING_ANIMATION, SwingAnimation.swingAnimation()
+                .type(SwingAnimation.Animation.STAB).duration(HIT_DUR << 1).build());
             final AttackRange arg = ItemType.DIAMOND_SPEAR.getDefaultData(DataComponentTypes.ATTACK_RANGE);
-            it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange().hitboxMargin(arg.hitboxMargin())
-                .mobFactor(arg.mobFactor()).maxReach(arg.maxReach()).maxCreativeReach(arg.maxCreativeReach())
-                .minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
+            it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
+                .hitboxMargin(arg.hitboxMargin() + HITBOX_BUFF).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
+                .maxCreativeReach(arg.maxCreativeReach()).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
             change = true;
         }
         final KineticWeapon kw = it.getData(DataComponentTypes.KINETIC_WEAPON);
@@ -363,9 +389,22 @@ public class PvPManager implements Listener {
             it.setData(DataComponentTypes.WEAPON, Weapon.weapon()
                 .itemDamagePerAttack(wpn.itemDamagePerAttack())
                 .disableBlockingForSeconds(MELEE_BREAK_SEC).build());
+            if (ItemUtil.is(it, ItemType.MACE)) {
+                final AttackRange arg = ItemType.MACE.getDefaultData(DataComponentTypes.ATTACK_RANGE);
+                it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
+                    .hitboxMargin(arg.hitboxMargin() + HITBOX_BUFF).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
+                    .maxCreativeReach(arg.maxCreativeReach()).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
+            }
             change = true;
         }
-        return change ? it : null;
+        if (change) {
+            return it;
+        }
+        /*if (swa != null) {
+            it.resetData(DataComponentTypes.SWING_ANIMATION);
+            return it;
+        }*/
+        return null;
     }
 
 }

@@ -1,6 +1,7 @@
 package ru.immensia.utils.versions;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.bukkit.*;
 import org.bukkit.block.BlockType;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.craftbukkit.entity.CraftEntityTypes;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer;
 import org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry;
@@ -47,6 +49,18 @@ import ru.immensia.utils.locs.BVec;
 
 
 public class Nms {
+
+    private static final Field CD_FIELD = getCDField();
+    private static Field getCDField() {
+        try {
+            final Field cd = net.minecraft.world.entity.LivingEntity
+                .class.getDeclaredField("attackStrengthTicker");
+            cd.setAccessible(true);
+            return cd;
+        } catch (NoSuchFieldException e) {
+            return null;
+        }
+    }
 
     public static void fakeItem(final Player p, final ItemStack it, final int slot) {
         sendPacket(p, new ClientboundSetPlayerInventoryPacket(slot, net.minecraft.world.item.ItemStack.fromBukkitCopy(it)));
@@ -236,13 +250,27 @@ public class Nms {
         final LevelChunk nmsChunk = ws.getChunkIfLoaded(chunk.getX(), chunk.getZ());
         if (nmsChunk == null) return;
         final ClientboundLevelChunkWithLightPacket packet = new ClientboundLevelChunkWithLightPacket(
-            nmsChunk, ws.getLightEngine(), null, null);
+            nmsChunk, ws.getLightEngine(), null, null, true);
         sendPacket(p, packet);//toNMS(p).c.a(packet);//sendPacket(p, packet);
     }
 
+    public static int getFullCD(final Player pl) {
+        final ServerPlayer spl = ((CraftPlayer) pl).getHandle();
+        return (int) spl.getCurrentItemAttackStrengthDelay();
+    }
+
+    public static void setCD(final Player pl, final float mul) {
+        if (CD_FIELD == null) return;
+        final ServerPlayer spl = ((CraftPlayer) pl).getHandle();
+        try {CD_FIELD.set(spl, (int) (spl.getCurrentItemAttackStrengthDelay() * mul));
+        } catch (IllegalAccessException e) {e.printStackTrace();}
+    }
+
     public static void swing(final LivingEntity le, final EquipmentSlot hand) {
-        Craft.toNMS(le).swinging = false;
-        le.swingHand(hand);
+//        net.minecraft.world.entity.LivingEntity ent = Craft.toNMS(le);
+//        ent.swinging = false; ent.swingTime = -1;
+//        le.swingHand(hand);
+        sendWorldPacket(le.getWorld(), new ClientboundAnimatePacket(Craft.toNMS(le), hand == EquipmentSlot.HAND ? 0 : 3));
     }
 
     public static void zoom(final Player pl, final float zoom) {
