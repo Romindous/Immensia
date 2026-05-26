@@ -197,8 +197,8 @@ public class PvPManager implements Listener {
                     Main.sync(() -> {
                         final int cdn = Nms.getFullCD(dmgrPl);
                         Nms.setCD(dmgrPl, Math.min((float) cdi / (float) cdn, 0.9f));
-                        dmgrPl.attack(target);
                         dmgrPl.setSprinting(false);
+                        dmgrPl.attack(target);
                         final ItemStack nmh = inv.getItemInMainHand().clone();
                         inv.setItemInMainHand(inv.getItemInOffHand());
                         inv.setItemInOffHand(nmh);
@@ -240,9 +240,9 @@ public class PvPManager implements Listener {
                         inv.setItemInMainHand(ofh);
                         Main.sync(() -> {
                             final int cdn = Nms.getFullCD(dmgrPl);
-                            Nms.setCD(dmgrPl, Math.min((float) cdi / (float) cdn, 0.9f));
-                            dmgrPl.attack(target);
+                            Nms.setCD(dmgrPl, Math.min((float) cdi / (float) cdn, 0.8f));
                             dmgrPl.setSprinting(false);
+                            dmgrPl.attack(target);
                             final ItemStack nmh = inv.getItemInMainHand().clone();
                             inv.setItemInMainHand(inv.getItemInOffHand());
                             inv.setItemInOffHand(nmh);

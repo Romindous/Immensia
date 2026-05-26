@@ -30,6 +30,7 @@ import org.bukkit.*;
 import org.bukkit.block.BlockType;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.craftbukkit.entity.CraftEntityTypes;
+import org.bukkit.craftbukkit.entity.CraftLivingEntity;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer;
@@ -264,6 +265,10 @@ public class Nms {
         final ServerPlayer spl = ((CraftPlayer) pl).getHandle();
         try {CD_FIELD.set(spl, (int) (spl.getCurrentItemAttackStrengthDelay() * mul));
         } catch (IllegalAccessException e) {e.printStackTrace();}
+    }
+
+    public static void updateEqips(final LivingEntity le) {
+        ((CraftLivingEntity) le).getHandle().detectEquipmentUpdates();
     }
 
     public static void swing(final LivingEntity le, final EquipmentSlot hand) {
