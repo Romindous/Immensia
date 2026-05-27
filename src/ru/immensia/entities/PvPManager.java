@@ -6,6 +6,7 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.*;
 import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
 import io.papermc.paper.event.player.PlayerShieldDisableEvent;
+import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.registry.keys.DamageTypeKeys;
@@ -14,6 +15,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
@@ -28,8 +31,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.PrepareSmithingEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.*;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.utils.EntityUtil;
@@ -38,13 +39,6 @@ import ru.immensia.utils.strings.StringUtil;
 import ru.immensia.utils.versions.Nms;
 
 public class PvPManager implements Listener {
-
-    public static final Set<PotionEffectType> potion_pvp_type = Set.of(PotionEffectType.POISON,
-        PotionEffectType.BLINDNESS, PotionEffectType.NAUSEA, PotionEffectType.INSTANT_DAMAGE, PotionEffectType.HUNGER);
-
-    public static final String PVP_NOTIFY = "§cТы в режиме боя!";
-    public static final PotionEffect HASTE = new PotionEffect(PotionEffectType.HASTE,
-        2, 255, true, false, false);
 
     public static final Set<ItemType> AXES = IStrap.getAll(ItemTypeTagKeys.AXES);
     public static final Set<ItemType> DUAL_HIT = Set.of(ItemType.DIAMOND_SWORD,
@@ -55,26 +49,29 @@ public class PvPManager implements Listener {
         ItemType.COPPER_SWORD, ItemType.STONE_SWORD, ItemType.NETHERITE_SWORD,
         ItemType.NETHERITE_AXE, ItemType.STONE_AXE, ItemType.WOODEN_AXE, ItemType.IRON_AXE,
         ItemType.COPPER_AXE, ItemType.GOLDEN_AXE, ItemType.DIAMOND_AXE);
-    public static final List<DamageReduction> BLOCK_REDS = ItemType.SHIELD
-        .getDefaultData(DataComponentTypes.BLOCKS_ATTACKS).damageReductions();
-    public static final DamageReduction DMG_RED = DamageReduction.damageReduction().type(IStrap.regSetOf(Arrays.asList(DamageTypeKeys.MACE_SMASH,
-            DamageTypeKeys.MOB_ATTACK, DamageTypeKeys.MOB_ATTACK_NO_AGGRO, DamageTypeKeys.MOB_PROJECTILE, DamageTypeKeys.PLAYER_ATTACK, DamageTypeKeys.SPEAR,
-            DamageTypeKeys.THROWN, DamageTypeKeys.ARROW, DamageTypeKeys.WITHER_SKULL, DamageTypeKeys.WIND_CHARGE), RegistryKey.DAMAGE_TYPE))
-        .horizontalBlockingAngle(60).factor(1f).build();
-    public static final BlocksAttacks MELEE_BLOCK = BlocksAttacks.blocksAttacks().blockDelaySeconds(0f)
-        .disableSound(IStrap.keyOf(Sound.BLOCK_COPPER_BULB_BREAK)).blockSound(IStrap.keyOf(Sound.BLOCK_COPPER_BULB_STEP))
-        .disableCooldownScale(1.5f)/*.bypassedBy(RegTag.BYPASSES_WEAPON.tagKey())*/.addDamageReduction(DMG_RED).build();
-    //List.of(DamageReduction.damageReduction().horizontalBlockingAngle(90f).base(0f).factor(1f).build())
-    public static final float MELEE_BREAK_SEC = 2f;
+
     //weapons - disable shield if axe || (offhand empty && (run || crit || !shield))
     //weapon block breaks if !shield || axe
 
-    public static final int DHIT_CLD = 4;
-    public static final int BLCK_CLD = 0;
+    private static final float MELEE_BREAK_SEC = 2f;
+    private static final int DHIT_CLD = 4;
+    private static final int BLCK_CLD = 0;
     private static final int HIT_DUR = 8;
     private static final int SPEAR_DELAY = 4;
     private static final float MIN_REACH = 0f;
     private static final float HITBOX_BUFF = 0.2f;
+
+    private static final UseCooldown STAB_USE_CD = UseCooldown
+        .useCooldown(2f).cooldownGroup(IStrap.key("stab_cd")).build();
+    private static final List<DamageReduction> BLOCK_REDS = ItemType.SHIELD
+        .getDefaultData(DataComponentTypes.BLOCKS_ATTACKS).damageReductions();
+    private static final DamageReduction DMG_RED = DamageReduction.damageReduction().type(IStrap.regSetOf(Arrays.asList(DamageTypeKeys.MACE_SMASH,
+            DamageTypeKeys.MOB_ATTACK, DamageTypeKeys.MOB_ATTACK_NO_AGGRO, DamageTypeKeys.MOB_PROJECTILE, DamageTypeKeys.PLAYER_ATTACK, DamageTypeKeys.SPEAR,
+            DamageTypeKeys.THROWN, DamageTypeKeys.ARROW, DamageTypeKeys.WITHER_SKULL, DamageTypeKeys.WIND_CHARGE), RegistryKey.DAMAGE_TYPE))
+        .horizontalBlockingAngle(60).factor(1f).build();
+    private static final BlocksAttacks MELEE_BLOCK = BlocksAttacks.blocksAttacks().blockDelaySeconds(0f)
+        .disableSound(IStrap.keyOf(Sound.BLOCK_COPPER_BULB_BREAK)).blockSound(IStrap.keyOf(Sound.BLOCK_COPPER_BULB_STEP))
+        .disableCooldownScale(1.5f)/*.bypassedBy(RegTag.BYPASSES_WEAPON.tagKey())*/.addDamageReduction(DMG_RED).build();
 
     public PvPManager() {
         reload();
@@ -94,7 +91,7 @@ public class PvPManager implements Listener {
 
     private static final Map<UUID, Float> cooldowns = new HashMap<>();
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
-    public void EntityDamageByEntityEvent(final PrePlayerAttackEntityEvent e) {
+    public void onPreDmg(final PrePlayerAttackEntityEvent e) {
         if (!e.willAttack()) return;
         final Player damager = e.getPlayer();
         if (!(e.getAttacked() instanceof final LivingEntity target)) return;
@@ -116,7 +113,7 @@ public class PvPManager implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
-    public void EntityDamageByEntityEvent(final EntityDamageByEntityEvent e) {
+    public void onDmg(final EntityDamageByEntityEvent e) {
         if (!e.getEntityType().isAlive()) return; //не обрабатывать урон рамкам, опыту и провее
 
         switch (e.getCause()) {
@@ -347,6 +344,13 @@ public class PvPManager implements Listener {
         }
     }
 
+    @EventHandler
+    public static void onUse(final PlayerStopUsingItemEvent e) {
+        final SwingAnimation swa = e.getItem().getData(DataComponentTypes.SWING_ANIMATION);
+        if (swa == null || swa.type() != SwingAnimation.Animation.STAB) return;
+        e.getPlayer().setCooldown(STAB_USE_CD.cooldownGroup(), (int) (STAB_USE_CD.seconds() * 20f));
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public static void onGet(final InventoryClickEvent e) {
         final Inventory inv = e.getClickedInventory();
@@ -362,6 +366,7 @@ public class PvPManager implements Listener {
         if (it != null) item.setItemStack(it);
     }
 
+    private static final double AS_BUFF = 0.8d;
     private static @Nullable ItemStack updatePvPItem(final ItemStack it) {
         if (it == null) return null;
         boolean change = false;
@@ -375,6 +380,20 @@ public class PvPManager implements Listener {
             it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
                 .hitboxMargin(arg.hitboxMargin() + HITBOX_BUFF).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
                 .maxCreativeReach(arg.maxCreativeReach()).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
+            final ItemAttributeModifiers.Builder bld = ItemAttributeModifiers.itemAttributes();
+            for (final ItemAttributeModifiers.Entry en : it.getData(DataComponentTypes.ATTRIBUTE_MODIFIERS).modifiers()) {
+                if (Attribute.ATTACK_SPEED.equals(en.attribute())) continue;
+                bld.addModifier(en.attribute(), en.modifier(), en.getGroup(), en.display());
+            }
+            for (final ItemAttributeModifiers.Entry en : it.getType().asItemType()
+                .getDefaultData(DataComponentTypes.ATTRIBUTE_MODIFIERS).modifiers()) {
+                if (!Attribute.ATTACK_SPEED.equals(en.attribute())) continue;
+                final AttributeModifier mod = en.modifier();
+                bld.addModifier(en.attribute(), new AttributeModifier(mod.getKey(),
+                        mod.getAmount() * AS_BUFF, mod.getOperation()), en.getGroup(), en.display());
+            }
+            it.setData(DataComponentTypes.ATTRIBUTE_MODIFIERS, bld.build());
+            it.setData(DataComponentTypes.USE_COOLDOWN, STAB_USE_CD);
             change = true;
         }
         final KineticWeapon kw = it.getData(DataComponentTypes.KINETIC_WEAPON);
@@ -397,14 +416,11 @@ public class PvPManager implements Listener {
             }
             change = true;
         }
-        if (change) {
-            return it;
-        }
+        return change ? it : null;
         /*if (swa != null) {
             it.resetData(DataComponentTypes.SWING_ANIMATION);
             return it;
         }*/
-        return null;
     }
 
 }
