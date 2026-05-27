@@ -61,10 +61,7 @@ import ru.immensia.entities.mobs.DragonBoss;
 import ru.immensia.items.ItemBuilder;
 import ru.immensia.items.SpecialItem;
 import ru.immensia.items.crafts.CraftManager;
-import ru.immensia.utils.BlockUtil;
-import ru.immensia.utils.ClassUtil;
-import ru.immensia.utils.EntityUtil;
-import ru.immensia.utils.ItemUtil;
+import ru.immensia.utils.*;
 import ru.immensia.utils.locs.BVec;
 import ru.immensia.utils.locs.LocUtil;
 import ru.immensia.utils.strings.TCUtil;
@@ -708,14 +705,14 @@ public class MainLis implements Listener {
         DragonBoss.onStage(e);
     }
 
-    public static final double VEL_MUL = 0.025d;
+    public static final double VEL_MUL = 0.1d;
     public static final double POP_MUL = 0.4d;
     public static final double ANGLE = 20d;
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBoost(final PlayerElytraBoostEvent e) {
         final Firework fw = e.getFirework();
         final FireworkMeta fm = fw.getFireworkMeta();
-        final int length = fw.getTicksToDetonate();
+        final int length = NumUtil.square(fw.getTicksToDetonate()) >> 6;
         final int es = fm.getEffectsSize();
         fw.remove();
         final Player p = e.getPlayer();
