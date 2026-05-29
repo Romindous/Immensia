@@ -57,6 +57,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import ru.immensia.boot.IStrap;
+import ru.immensia.entities.PvPManager;
 import ru.immensia.entities.mobs.DragonBoss;
 import ru.immensia.items.ItemBuilder;
 import ru.immensia.items.SpecialItem;
@@ -585,7 +586,10 @@ public class MainLis implements Listener {
             if (Main.srnd.nextBoolean()) continue;
             final Equippable es = mt.getDefaultData(DataComponentTypes.EQUIPPABLE);
             final EquipmentSlot slot = es == null ? EquipmentSlot.HAND : es.slot();
-            eq.setItem(slot, enchanted(mt, slot, wear), false);
+            final ItemStack eit = enchanted(mt, slot, wear);
+            final ItemStack uit = PvPManager.updatePvPItem(eit);
+//            Bukkit.broadcast(TCUtil.form("0-" + uit));
+            eq.setItem(slot, uit == null ? eit : uit, false);
         }
 
         // x x x x

@@ -62,7 +62,7 @@ public class PvPManager implements Listener {
     private static final float HITBOX_BUFF = 0.2f;
 
     private static final UseCooldown STAB_USE_CD = UseCooldown
-        .useCooldown(2f).cooldownGroup(IStrap.key("stab_cd")).build();
+        .useCooldown(4f).cooldownGroup(IStrap.key("stab_cd")).build();
     private static final List<DamageReduction> BLOCK_REDS = ItemType.SHIELD
         .getDefaultData(DataComponentTypes.BLOCKS_ATTACKS).damageReductions();
     private static final DamageReduction DMG_RED = DamageReduction.damageReduction().type(IStrap.regSetOf(Arrays.asList(DamageTypeKeys.MACE_SMASH,
@@ -284,8 +284,7 @@ public class PvPManager implements Listener {
     //weapon block breaks if !shield || axe
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)
     public void onCld(final PlayerShieldDisableEvent e) {
-        final ItemStack blIt = e.getPlayer().getActiveItem();
-        if (!ItemUtil.is(blIt, ItemType.SHIELD)) return;
+        if (!ItemUtil.is(e.getPlayer().getActiveItem(), ItemType.SHIELD)) return;
         switch (e.getDamager()) {
             case Player pl:
 //                            pl.sendMessage("getAttackCooldown() = " + pl.getAttackCooldown()); всегда обновляет
@@ -367,7 +366,8 @@ public class PvPManager implements Listener {
     }
 
     private static final double AS_BUFF = 0.8d;
-    private static @Nullable ItemStack updatePvPItem(final ItemStack it) {
+    public static @Nullable ItemStack updatePvPItem(final ItemStack it) {
+//        Bukkit.broadcast(TCUtil.form("01-" + it));
         if (it == null) return null;
         boolean change = false;
         final SwingAnimation swa = it.getData(DataComponentTypes.SWING_ANIMATION);
@@ -408,12 +408,13 @@ public class PvPManager implements Listener {
             it.setData(DataComponentTypes.WEAPON, Weapon.weapon()
                 .itemDamagePerAttack(wpn.itemDamagePerAttack())
                 .disableBlockingForSeconds(MELEE_BREAK_SEC).build());
-            if (ItemUtil.is(it, ItemType.MACE)) {
-                final AttackRange arg = ItemType.MACE.getDefaultData(DataComponentTypes.ATTACK_RANGE);
-                it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
-                    .hitboxMargin(arg.hitboxMargin() + HITBOX_BUFF).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
-                    .maxCreativeReach(arg.maxCreativeReach()).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
-            }
+            change = true;
+        }
+        if (ItemUtil.is(it, ItemType.MACE)) {
+            final AttackRange arg = ItemType.MACE.getDefaultData(DataComponentTypes.ATTACK_RANGE);
+            it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
+                .hitboxMargin(arg.hitboxMargin() + HITBOX_BUFF).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
+                .maxCreativeReach(arg.maxCreativeReach()).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
             change = true;
         }
         return change ? it : null;
