@@ -41,9 +41,10 @@ import ru.immensia.utils.versions.Nms;
 public class PvPManager implements Listener {
 
     public static final Set<ItemType> AXES = IStrap.getAll(ItemTypeTagKeys.AXES);
+    public static final Set<ItemType> SPEARS = IStrap.getAll(ItemTypeTagKeys.SPEARS);
     public static final Set<ItemType> DUAL_HIT = Set.of(ItemType.DIAMOND_SWORD,
-        ItemType.GOLDEN_SWORD, ItemType.IRON_SWORD, ItemType.WOODEN_SWORD, ItemType.COPPER_SWORD,
-        ItemType.STONE_SWORD, ItemType.NETHERITE_SWORD, ItemType.TRIDENT);
+        ItemType.GOLDEN_SWORD, ItemType.IRON_SWORD, ItemType.WOODEN_SWORD,
+        ItemType.COPPER_SWORD, ItemType.STONE_SWORD, ItemType.NETHERITE_SWORD);
     public static final Set<ItemType> CAN_BLOCK = Set.of(ItemType.DIAMOND_SWORD,
         ItemType.GOLDEN_SWORD, ItemType.IRON_SWORD, ItemType.WOODEN_SWORD,
         ItemType.COPPER_SWORD, ItemType.STONE_SWORD, ItemType.NETHERITE_SWORD,
@@ -345,8 +346,9 @@ public class PvPManager implements Listener {
 
     @EventHandler
     public static void onUse(final PlayerStopUsingItemEvent e) {
-        final SwingAnimation swa = e.getItem().getData(DataComponentTypes.SWING_ANIMATION);
-        if (swa == null || swa.type() != SwingAnimation.Animation.STAB) return;
+//        final SwingAnimation swa = e.getItem().getData(DataComponentTypes.SWING_ANIMATION);
+//        if (swa == null || swa.type() != SwingAnimation.Animation.STAB) return;
+        if (!SPEARS.contains(e.getItem().getType().asItemType())) return;
         e.getPlayer().setCooldown(STAB_USE_CD.cooldownGroup(), (int) (STAB_USE_CD.seconds() * 20f));
     }
 
@@ -374,11 +376,12 @@ public class PvPManager implements Listener {
         final boolean isStab = ItemUtil.is(it, ItemType.TRIDENT)
             || (swa != null && swa.type() == SwingAnimation.Animation.STAB);
         if (isStab) {
+            final boolean spear = SPEARS.contains(it.getType().asItemType());
             it.setData(DataComponentTypes.SWING_ANIMATION, SwingAnimation.swingAnimation()
                 .type(SwingAnimation.Animation.STAB).duration(HIT_DUR << 1).build());
             final AttackRange arg = ItemType.DIAMOND_SPEAR.getDefaultData(DataComponentTypes.ATTACK_RANGE);
             it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
-                .hitboxMargin(arg.hitboxMargin() + HITBOX_BUFF).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
+                .hitboxMargin(arg.hitboxMargin() + (spear ? HITBOX_BUFF : 0f)).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
                 .maxCreativeReach(arg.maxCreativeReach()).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
             final ItemAttributeModifiers.Builder bld = ItemAttributeModifiers.itemAttributes();
             for (final ItemAttributeModifiers.Entry en : it.getData(DataComponentTypes.ATTRIBUTE_MODIFIERS).modifiers()) {
@@ -390,10 +393,10 @@ public class PvPManager implements Listener {
                 if (!Attribute.ATTACK_SPEED.equals(en.attribute())) continue;
                 final AttributeModifier mod = en.modifier();
                 bld.addModifier(en.attribute(), new AttributeModifier(mod.getKey(),
-                        mod.getAmount() * AS_BUFF, mod.getOperation()), en.getGroup(), en.display());
+                    mod.getAmount() * AS_BUFF, mod.getOperation()), en.getGroup(), en.display());
             }
             it.setData(DataComponentTypes.ATTRIBUTE_MODIFIERS, bld.build());
-            it.setData(DataComponentTypes.USE_COOLDOWN, STAB_USE_CD);
+            if (spear) it.setData(DataComponentTypes.USE_COOLDOWN, STAB_USE_CD);
             change = true;
         }
         final KineticWeapon kw = it.getData(DataComponentTypes.KINETIC_WEAPON);
@@ -411,10 +414,9 @@ public class PvPManager implements Listener {
             change = true;
         }
         if (ItemUtil.is(it, ItemType.MACE)) {
-            final AttackRange arg = ItemType.MACE.getDefaultData(DataComponentTypes.ATTACK_RANGE);
             it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
-                .hitboxMargin(arg.hitboxMargin() + HITBOX_BUFF).mobFactor(arg.mobFactor()).maxReach(arg.maxReach())
-                .maxCreativeReach(arg.maxCreativeReach()).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
+                .hitboxMargin(HITBOX_BUFF).mobFactor(1f).maxReach(3f)
+                .maxCreativeReach(5f).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
             change = true;
         }
         return change ? it : null;
