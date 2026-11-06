@@ -400,7 +400,7 @@ public class ItemUtil {
                     NumUtil.floatOf(mods[1], 0f), NumUtil.floatOf(mods[2], 0f));
             }
         });
-        dataParser.put(DataComponentTypes.SWING_ANIMATION, new DataParser.Parser<>() {
+        dataParser.put(DataComponentTypes.ATTACK_ANIMATION, new DataParser.Parser<>() {
             public String write(final SwingAnimation val) {
                 return val.type().name() + seps[1].get() + val.duration();
             }

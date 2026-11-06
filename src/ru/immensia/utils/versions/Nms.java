@@ -64,7 +64,7 @@ public class Nms {
     }
 
     public static void fakeItem(final Player p, final ItemStack it, final int slot) {
-        sendPacket(p, new ClientboundSetPlayerInventoryPacket(slot, net.minecraft.world.item.ItemStack.fromBukkitCopy(it)));
+        sendPacket(p, new ClientboundSetPlayerInventoryPacket(slot, CraftItemStack.asNMSCopy(it)));
     }
 
     private static final int OFH_SLOT = 40;
@@ -242,7 +242,7 @@ public class Nms {
 //Ostrov.log_warn("sendFakeEquip " + playerInventorySlot + " " + item.getType());
         final ServerPlayer sp = Craft.toNMS(p); //5-шлем
         sp.connection.send(new ClientboundContainerSetSlotPacket(sp.inventoryMenu.containerId,
-            sp.inventoryMenu.getStateId(), nmsInventorySlot, net.minecraft.world.item.ItemStack.fromBukkitCopy(item)));
+            sp.inventoryMenu.getStateId(), nmsInventorySlot, CraftItemStack.asNMSCopy(item)));
     }
 
     public static void sendChunkChange(final Player p, final Chunk chunk) {

@@ -143,7 +143,7 @@ public class EntityUtil {
         final double wd2 = ent.getWidth() * 0.6d;
         final Location loc = center(ent);
         new ParticleBuilder(pr).location(loc).count((int) (hd2 * wd2 * 28d))
-            .offset(wd2, hd2, wd2).extra(0d).allPlayers().spawn();
+            .offset(wd2, hd2, wd2).speed(0d).allPlayers().spawn();
         loc.getWorld().playSound(loc, snd, 1f, pt);
     }
 
@@ -153,7 +153,7 @@ public class EntityUtil {
         final Location loc = center(ent);
         final ParticleBuilder pb = new ParticleBuilder(pr).location(loc).count((int) (hd2 * wd2 * 28d));
         if (data != null && pr.getDataType().isAssignableFrom(data.getClass())) pb.data(data);
-        pb.offset(wd2, hd2, wd2).extra(0d).allPlayers().spawn();
+        pb.offset(wd2, hd2, wd2).speed(0d).allPlayers().spawn();
         loc.getWorld().playSound(loc, snd, 1f, pt);
     }
 

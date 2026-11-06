@@ -26,7 +26,6 @@ import org.bukkit.event.inventory.FurnaceStartSmeltEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.inventory.PrepareSmithingEvent;
 import org.bukkit.inventory.*;
-import org.bukkit.inventory.RecipeChoice.ExactChoice;
 import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.items.ItemBuilder;
@@ -208,28 +207,28 @@ public final class CraftManager implements Listener {
                     drc.shape(src.getShape());
                     for (final Entry<Character, RecipeChoice> en : src.getChoiceMap().entrySet()) {
                         if (en.getValue() == null) continue;
-                        drc.setIngredient(en.getKey(), new ExactChoice(((IdChoice) en.getValue()).getItemStack()));
+                        drc.setIngredient(en.getKey(), RecipeChoice.exactChoice(((IdChoice) en.getValue()).getItemStack()));
                     }
                     return drc;
                 case ShapelessRecipe src:
                     final ShapelessRecipe lrc = new ShapelessRecipe(new NamespacedKey(IStrap.space, ks), rc.getResult());
                     for (final RecipeChoice ch : src.getChoiceList()) {
                         if (ch == null) continue;
-                        lrc.addIngredient(new ExactChoice(((IdChoice) ch).getItemStack()));
+                        lrc.addIngredient(RecipeChoice.exactChoice(((IdChoice) ch).getItemStack()));
                     }
                     return lrc;
                 case final FurnaceRecipe src:
                     return new FurnaceRecipe(new NamespacedKey(IStrap.space, ks), src.getResult(),
-                        new ExactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
+                        RecipeChoice.exactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
                 case final SmokingRecipe src:
                     return new SmokingRecipe(new NamespacedKey(IStrap.space, ks), src.getResult(),
-                        new ExactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
+                        RecipeChoice.exactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
                 case final BlastingRecipe src:
                     return new BlastingRecipe(new NamespacedKey(IStrap.space, ks), src.getResult(),
-                        new ExactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
+                        RecipeChoice.exactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
                 case final CampfireRecipe src:
                     return new CampfireRecipe(new NamespacedKey(IStrap.space, ks), src.getResult(),
-                        new ExactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
+                        RecipeChoice.exactChoice(((IdChoice) src.getInputChoice()).getItemStack()), src.getExperience(), src.getCookingTime());
                 default:
                     return null;
             }
@@ -755,7 +754,7 @@ public final class CraftManager implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new FurnaceRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 200);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc, true);
+            Bukkit.addRecipe(nrc);
         } else if (ItemType.SMOKER.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -765,7 +764,7 @@ public final class CraftManager implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new SmokingRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 100);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc, true);
+            Bukkit.addRecipe(nrc);
         } else if (ItemType.BLAST_FURNACE.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -775,7 +774,7 @@ public final class CraftManager implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new BlastingRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 100);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc, true);
+            Bukkit.addRecipe(nrc);
         } else if (ItemType.CAMPFIRE.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -785,7 +784,7 @@ public final class CraftManager implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new CampfireRecipe(nKey, rst, typeChoiceOf(it), 0.5f, 500);
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc, true);
+            Bukkit.addRecipe(nrc);
         } else if (ItemType.SMITHING_TABLE.equals(tp)) {
             it = inv.getItem(10);
             final ItemStack scd = inv.getItem(12);
@@ -800,7 +799,7 @@ public final class CraftManager implements Listener {
             nrc = new SmithingTransformRecipe(nKey, rst, typeChoiceOf(tpl), typeChoiceOf(it),
                 typeChoiceOf(scd), !it.hasData(DataComponentTypes.DAMAGE));
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc, true);
+            Bukkit.addRecipe(nrc);
         } else if (ItemType.STONECUTTER.equals(tp)) {
             it = inv.getItem(11);
             if (ItemUtil.isBlank(it, false)) {
@@ -810,7 +809,7 @@ public final class CraftManager implements Listener {
             cs.set("recipe.a", ItemUtil.write(it));
             nrc = new StonecuttingRecipe(nKey, rst, typeChoiceOf(it));
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc, true);
+            Bukkit.addRecipe(nrc);
         } else if (ItemType.ENDER_CHEST.equals(tp)) {
             final ShapelessRecipe lrs = new ShapelessRecipe(nKey, rst);
             shp = new String[]{"abc", "def", "ghi"};
@@ -825,7 +824,7 @@ public final class CraftManager implements Listener {
             }
             nrc = lrs;
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(nrc, true);
+            Bukkit.addRecipe(nrc);
         } else {//if ItemType.CHEST.equals(tp) - тоже магия
             final ShapedRecipe srs = new ShapedRecipe(nKey, rst);
             final ItemStack[] rcs = new ItemStack[rad * rad];
@@ -865,7 +864,7 @@ public final class CraftManager implements Listener {
             }
             nrc = srs;
             Bukkit.removeRecipe(nKey);
-            Bukkit.addRecipe(srs, true);
+            Bukkit.addRecipe(srs);
         }
 
         CraftManager.crafts.put(nKey, new Craft(nrc, p -> true));

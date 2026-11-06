@@ -43,7 +43,7 @@ public class SmeltPick extends SpecialItem {
         final Location blc = e.getBlock().getLocation().toCenterLocation();
         e.getPlayer().playSound(blc, Sound.ENTITY_PLAYER_HURT_ON_FIRE, 1f, 2f);
         new ParticleBuilder(Particle.SMALL_FLAME).location(blc).offset(0.4d, 0.4d, 0.4d)
-            .receivers(20).extra(0.01d).count(40).spawn();
+            .receivers(20).speed(0.01d).count(40).spawn();
     }
 
     protected void onAttack(final EquipmentSlot eq, final EntityDamageByEntityEvent e) {}

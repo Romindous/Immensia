@@ -372,12 +372,12 @@ public class PvPManager implements Listener {
 //        Bukkit.broadcast(TCUtil.form("01-" + it));
         if (it == null) return null;
         boolean change = false;
-        final SwingAnimation swa = it.getData(DataComponentTypes.SWING_ANIMATION);
+        final SwingAnimation swa = it.getData(DataComponentTypes.ATTACK_ANIMATION);
         final boolean isStab = ItemUtil.is(it, ItemType.TRIDENT)
             || (swa != null && swa.type() == SwingAnimation.Animation.STAB);
         if (isStab) {
             final boolean spear = SPEARS.contains(it.getType().asItemType());
-            it.setData(DataComponentTypes.SWING_ANIMATION, SwingAnimation.swingAnimation()
+            it.setData(DataComponentTypes.ATTACK_ANIMATION, SwingAnimation.swingAnimation()
                 .type(SwingAnimation.Animation.STAB).duration(HIT_DUR << 1).build());
             final AttackRange arg = ItemType.DIAMOND_SPEAR.getDefaultData(DataComponentTypes.ATTACK_RANGE);
             it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()

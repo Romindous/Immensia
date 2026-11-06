@@ -100,6 +100,8 @@ public class MainLis implements Listener {
         CraftManager.discRecs(e.getPlayer());
     }
 
+//    private static final Map<UUID, Loot>
+
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onDth(final PlayerDeathEvent e) {
         final Player p = e.getPlayer();
@@ -107,6 +109,8 @@ public class MainLis implements Listener {
         p.sendMessage(TCUtil.form(Main.PREFIX + "You died at:\n§7(§a"
             + loc.getBlockX() + "§7, §a" + loc.getBlockY() + "§7, §a" + loc.getBlockZ() + "§7)"));
         e.setDroppedExp(p.calculateTotalExperiencePoints() >> 1);
+
+//        p.sendMessage("blocks-" + p.getInventory().getItem(3));
     }
 
 	/*@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -464,11 +468,17 @@ public class MainLis implements Listener {
                 cr.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(10d);
                 cr.getAttribute(Attribute.MAX_HEALTH).setBaseValue(80d);
                 break;
-            case DROWNED, GIANT, HUSK, ZOMBIE, ZOMBIE_VILLAGER:
+            case GIANT, HUSK, ZOMBIE, ZOMBIE_VILLAGER:
                 wearChance(cr, dstSq, new ItemType[] {ItemType.LEATHER_BOOTS, ItemType.LEATHER_LEGGINGS, ItemType.LEATHER_CHESTPLATE, ItemType.LEATHER_HELMET, ItemType.WOODEN_AXE, inVeh ? ItemType.WOODEN_SPEAR : ItemType.WOODEN_SWORD},
                     new ItemType[] {ItemType.COPPER_BOOTS, ItemType.COPPER_LEGGINGS, ItemType.COPPER_CHESTPLATE, ItemType.COPPER_HELMET, ItemType.COPPER_AXE, inVeh ? ItemType.COPPER_SPEAR : ItemType.COPPER_SWORD},
                     new ItemType[] {ItemType.IRON_BOOTS, ItemType.IRON_LEGGINGS, ItemType.IRON_CHESTPLATE, ItemType.IRON_HELMET, ItemType.IRON_AXE, inVeh ? ItemType.IRON_SPEAR : ItemType.IRON_SWORD, ItemType.SHIELD},
                     new ItemType[] {ItemType.DIAMOND_BOOTS, ItemType.DIAMOND_LEGGINGS, ItemType.DIAMOND_CHESTPLATE, ItemType.DIAMOND_HELMET, ItemType.DIAMOND_AXE, inVeh ? ItemType.DIAMOND_SPEAR : ItemType.DIAMOND_SWORD, ItemType.SHIELD});
+                break;
+            case DROWNED:
+                wearChance(cr, dstSq, new ItemType[] {ItemType.LEATHER_BOOTS, ItemType.LEATHER_LEGGINGS, ItemType.LEATHER_CHESTPLATE, ItemType.LEATHER_HELMET, ItemType.FISHING_ROD, inVeh ? ItemType.WOODEN_SPEAR : ItemType.WOODEN_SWORD},
+                    new ItemType[] {ItemType.COPPER_BOOTS, ItemType.COPPER_LEGGINGS, ItemType.COPPER_CHESTPLATE, ItemType.COPPER_HELMET, ItemType.FISHING_ROD, inVeh ? ItemType.COPPER_SPEAR : ItemType.COPPER_SWORD},
+                    new ItemType[] {ItemType.IRON_BOOTS, ItemType.IRON_LEGGINGS, ItemType.IRON_CHESTPLATE, ItemType.IRON_HELMET, ItemType.IRON_SWORD, inVeh ? ItemType.TRIDENT : ItemType.IRON_SWORD, inVeh ? ItemType.NAUTILUS_SHELL : ItemType.SHIELD},
+                    new ItemType[] {ItemType.DIAMOND_BOOTS, ItemType.DIAMOND_LEGGINGS, ItemType.DIAMOND_CHESTPLATE, ItemType.DIAMOND_HELMET, ItemType.DIAMOND_SWORD, inVeh ? ItemType.TRIDENT : ItemType.DIAMOND_AXE, inVeh ? ItemType.NAUTILUS_SHELL : ItemType.SHIELD});
                 break;
             case PIGLIN:
                 wearChance(cr, dstSq, new ItemType[] {ItemType.GOLDEN_BOOTS, ItemType.LEATHER_LEGGINGS, ItemType.GOLDEN_CHESTPLATE, ItemType.LEATHER_HELMET, ItemType.CROSSBOW, ItemType.GOLDEN_SWORD},
@@ -763,7 +773,7 @@ public class MainLis implements Listener {
                     return;
                 }
                 new ParticleBuilder(Particle.FIREWORK).location(loc)
-                    .receivers(100).count(1).extra(0d).spawn();
+                    .receivers(100).count(1).speed(0d).spawn();
                 pl.setVelocity(pl.getVelocity().add(dir.multiply(VEL_MUL)));
             }
         }.runTaskTimer(Main.plug, 0, 0);
