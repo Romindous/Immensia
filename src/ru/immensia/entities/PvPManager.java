@@ -8,6 +8,7 @@ import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
 import io.papermc.paper.event.player.PlayerShieldDisableEvent;
 import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
+import io.papermc.paper.persistence.PersistentDataKey;
 import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.registry.keys.DamageTypeKeys;
 import io.papermc.paper.registry.keys.tags.ItemTypeTagKeys;
@@ -17,6 +18,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.damage.DamageType;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
@@ -31,6 +33,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.PrepareSmithingEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.*;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import ru.immensia.Main;
 import ru.immensia.boot.IStrap;
 import ru.immensia.utils.EntityUtil;
@@ -64,6 +68,8 @@ public class PvPManager implements Listener {
 
     private static final UseCooldown STAB_USE_CD = UseCooldown
         .useCooldown(4f).cooldownGroup(IStrap.key("stab_cd")).build();
+    private static final PersistentDataKey<Boolean> STAB_PDC_KEY = PersistentDataKey
+        .of(IStrap.key("stab"), PersistentDataType.BOOLEAN);
     private static final List<DamageReduction> BLOCK_REDS = ItemType.SHIELD
         .getDefaultData(DataComponentTypes.BLOCKS_ATTACKS).damageReductions();
     private static final DamageReduction DMG_RED = DamageReduction.damageReduction().type(IStrap.regSetOf(Arrays.asList(DamageTypeKeys.MACE_SMASH,
@@ -102,9 +108,8 @@ public class PvPManager implements Listener {
             target.getWorld().playSound(EntityUtil.center(target),
                 Sound.ITEM_SHIELD_BLOCK, 0.8f, 0.8f);
             if (damager.getAttackCooldown() == 1f) {
-                EntityUtil.effect(target, Sound.ITEM_SHIELD_BREAK, 0.8f,
-                    Particle.ITEM, ItemType.SHIELD.createItemStack());
-                target.getEquipment().setItemInOffHand(null);
+                final ItemStack it = damager.getInventory().getItem(damager.getActiveItemHand());
+                if (it.hasData(DataComponentTypes.WEAPON)) breakShield(target);
             }
             e.setCancelled(true);
             return;
@@ -176,6 +181,9 @@ public class PvPManager implements Listener {
                 inv.setItemInMainHand(hand);
             }
 
+            if (DamageType.SPEAR.equals(e.getDamageSource().getDamageType()))
+                dmgrPl.getPersistentDataContainer().set(STAB_PDC_KEY, true);
+
             Main.sync(() -> EntityUtil.indicate(target.getEyeLocation(), (e.isCritical() ? "<red>✘" : "<gold>")
                 + StringUtil.toSigFigs(e.getFinalDamage(), (byte) 1), dmgrPl), 1);
 
@@ -218,6 +226,9 @@ public class PvPManager implements Listener {
                         .disableBlockingForSeconds(MELEE_BREAK_SEC).build());
                     inv.setItemInMainHand(hand);
                 }
+
+                if (DamageType.SPEAR.equals(e.getDamageSource().getDamageType()))
+                    dmgrPl.getPersistentDataContainer().set(STAB_PDC_KEY, true);
 
                 Main.sync(() -> EntityUtil.indicate(target.getEyeLocation(), (e.isCritical() ? "<red>✘" : "<gold>")
                     + StringUtil.toSigFigs(e.getFinalDamage(), (byte) 1), dmgrPl), 1);
@@ -329,8 +340,41 @@ public class PvPManager implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public static void onProj(final ProjectileHitEvent e) {
         //попадание было в живчика
-        if (e.getHitEntity() instanceof final LivingEntity target)
-            target.setNoDamageTicks(0);
+        if (!(e.getHitEntity() instanceof final LivingEntity target)) return;
+        target.setNoDamageTicks(0);
+        if (!(target instanceof Mob) && !(target instanceof ArmorStand)) return;
+        final ItemStack shd = target.getEquipment().getItemInOffHand();
+        if (!ItemUtil.is(shd, ItemType.SHIELD)) return;
+        target.getWorld().playSound(EntityUtil.center(target),
+            Sound.ITEM_SHIELD_BLOCK, 0.8f, 0.8f);
+        switch (e.getEntity()) {
+            case Trident ignored:
+                breakShield(target);
+                break;
+            case AbstractArrow ignored:
+                breakShield(target);
+                e.setCancelled(true);
+                break;
+            case Fireball ignored:
+                breakShield(target);
+                e.setCancelled(true);
+                break;
+            case Firework ignored:
+                breakShield(target);
+                e.setCancelled(true);
+                break;
+            case ShulkerBullet ignored:
+                breakShield(target);
+                e.setCancelled(true);
+                break;
+            default: break;
+        }
+    }
+
+    private static void breakShield(LivingEntity target) {
+        EntityUtil.effect(target, Sound.ITEM_SHIELD_BREAK, 0.8f,
+            Particle.ITEM, ItemType.SHIELD.createItemStack());
+        target.getEquipment().setItemInOffHand(null);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)
@@ -349,7 +393,10 @@ public class PvPManager implements Listener {
 //        final SwingAnimation swa = e.getItem().getData(DataComponentTypes.SWING_ANIMATION);
 //        if (swa == null || swa.type() != SwingAnimation.Animation.STAB) return;
         if (!SPEARS.contains(e.getItem().getType().asItemType())) return;
-        e.getPlayer().setCooldown(STAB_USE_CD.cooldownGroup(), (int) (STAB_USE_CD.seconds() * 20f));
+        final PersistentDataContainer pdc = e.getPlayer().getPersistentDataContainer();
+        if (pdc.getOrDefault(STAB_PDC_KEY, false))
+            e.getPlayer().setCooldown(STAB_USE_CD.cooldownGroup(), (int) (STAB_USE_CD.seconds() * 20f));
+        pdc.set(STAB_PDC_KEY, false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -413,17 +460,18 @@ public class PvPManager implements Listener {
                 .disableBlockingForSeconds(MELEE_BREAK_SEC).build());
             change = true;
         }
-        if (ItemUtil.is(it, ItemType.MACE)) {
+        /*if (ItemUtil.is(it, ItemType.MACE)) {
             it.setData(DataComponentTypes.ATTACK_RANGE, AttackRange.attackRange()
                 .hitboxMargin(HITBOX_BUFF).mobFactor(1f).maxReach(3f)
                 .maxCreativeReach(5f).minReach(MIN_REACH).minCreativeReach(MIN_REACH).build());
             change = true;
-        }
+        }*/
         return change ? it : null;
         /*if (swa != null) {
             it.resetData(DataComponentTypes.SWING_ANIMATION);
             return it;
         }*/
+
     }
 
 }

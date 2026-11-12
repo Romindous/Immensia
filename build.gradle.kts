@@ -2,7 +2,7 @@
 import io.papermc.paperweight.userdev.ReobfArtifactConfiguration
 
 group = "ru.immensia"
-version = "3.21.11"
+version = "3.26.3"
 description = "immensia"
 
 
