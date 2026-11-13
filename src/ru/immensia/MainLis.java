@@ -390,7 +390,7 @@ public class MainLis implements Listener {
                             oml == null ? 0 : oml.getAmplifier() + 1, true, true, true));
                         p.getInventory().setItem(e.getHand(), it.subtract());
                         break;
-                    case DIAMOND_HOE, IRON_HOE, WOODEN_HOE,
+                    case DIAMOND_HOE, IRON_HOE, WOODEN_HOE, COPPER_HOE,
                          GOLDEN_HOE, NETHERITE_HOE, STONE_HOE:
                         final Block b = e.getClickedBlock();
                         if (b != null && b.getBlockData() instanceof Ageable) {
@@ -669,6 +669,7 @@ public class MainLis implements Listener {
             Enchantment.PROJECTILE_PROTECTION, Enchantment.DEPTH_STRIDER};
 
     private static final int ENCH_DEL = 1;
+    private static final int TREASURE_CHANCE = 8;
     private static ItemStack enchanted(final ItemType mt, final EquipmentSlot slot, final int wear) {
         final ItemStack it = mt.createItemStack();
         final Enchantment[] enchs;
@@ -677,6 +678,8 @@ public class MainLis implements Listener {
         else return it;
         final int ench = wear >> ENCH_DEL;
         if (ench == 0) return it;
+        if (Main.srnd.nextInt(TREASURE_CHANCE) == 0)
+            return it.enchantWithLevels(wear << ENCH_DEL, true, Main.srnd);
         ClassUtil.shuffle(enchs);
         final ItemBuilder ib = new ItemBuilder(it);
         final List<Enchantment> added = new ArrayList<>();
